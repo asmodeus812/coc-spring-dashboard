@@ -105,6 +105,56 @@
                 "command": "spring.apps.focus",
                 "title": "Apps focus",
                 "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.dashboard.bean.navigate",
+                "title": "Dashboard bean navigate",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.dashboard.bean.open",
+                "title": "Dashboard bean open",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.dashboard.bean.showAll",
+                "title": "Dashboard bean show all",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.dashboard.bean.showDefined",
+                "title": "Dashboard bean show defined",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.dashboard.bean.showDependencies",
+                "title": "Dashboard bean show dependencies",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.dashboard.bean.showInjectedInto",
+                "title": "Dashboard bean show injected into",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.dashboard.bean.showHierarchy",
+                "title": "Dashboard bean show hierarchy",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.beans.find",
+                "title": "Beans find",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.staticData.refresh",
+                "title": "Static data refresh",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.beans.focus",
+                "title": "Beans focus",
+                "category": "Spring Boot Dashboard"
             }
         ]
     }

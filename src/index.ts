@@ -5,6 +5,7 @@ import { PlaceholderLauncher } from "./launch";
 import { LiveData } from "./live";
 import { waitForStsApi } from "./sts";
 import { Symbols } from "./symbols";
+import { registerBeans } from "./views/beans";
 
 export async function activate(context: coc.ExtensionContext): Promise<void> {
     start(context).catch(e => coc.window.showErrorMessage(`Spring Boot Dashboard: ${e}`));
@@ -23,6 +24,8 @@ async function start(context: coc.ExtensionContext): Promise<void> {
         const d: Dashboard = { context, api, live, symbols, apps: new AppsView(live, new PlaceholderLauncher()), views: new Map(), finders: new Map() };
         context.subscriptions.push(live, symbols);
         registerApps(d);
+        registerBeans(d);
+        context.subscriptions.push(coc.commands.registerCommand("spring.staticData.refresh", () => d.symbols.refresh()));
         await live.init();
     }
 }

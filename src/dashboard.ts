@@ -62,8 +62,8 @@ export async function findInView(view: coc.TreeView<any>): Promise<void> {
 export class NodeCache<T> {
     private readonly nodes: Map<string, T> = new Map();
 
-    public get(key: string, make: () => T): T {
-        const node: T = this.nodes.get(key) ?? make();
+    public get<N extends T>(key: string, make: () => N): N {
+        const node: N = (this.nodes.get(key) as N | undefined) ?? make();
         this.nodes.set(key, node);
         return node;
     }
