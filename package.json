@@ -18,10 +18,6 @@
     "activationEvents": [
         "onLanguage:java"
     ],
-    "extensionDependencies": [
-        "coc-springboot",
-        "coc-java"
-    ],
     "scripts": {
         "build": "node esbuild.mjs",
         "prepare": "node esbuild.mjs",
@@ -36,8 +32,80 @@
         "configuration": {
             "type": "object",
             "title": "Spring Boot Dashboard",
-            "properties": {}
+            "properties": {
+                "spring.dashboard.openUrl": {
+                    "type": "string",
+                    "default": "{protocol}://{hostname}:{port}{contextPath}",
+                    "description": "Url template of an app, {protocol} {hostname} {port} {contextPath}"
+                }
+            }
         },
-        "commands": []
+        "commands": [
+            {
+                "command": "spring-boot-dashboard.apps.show",
+                "title": "Apps show",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring-boot-dashboard.refresh",
+                "title": "Refresh",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring-boot-dashboard.localapp.run",
+                "title": "Localapp run",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring-boot-dashboard.localapp.runWithProfile",
+                "title": "Localapp run with profile",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring-boot-dashboard.localapp.debug",
+                "title": "Localapp debug",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring-boot-dashboard.localapp.debugWithProfile",
+                "title": "Localapp debug with profile",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring-boot-dashboard.localapp.stop",
+                "title": "Localapp stop",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring-boot-dashboard.localapp.open",
+                "title": "Localapp open",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring-boot-dashboard.localapp.run-multiple",
+                "title": "Localapp run multiple",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring-boot-dashboard.localapp.debug-multiple",
+                "title": "Localapp debug multiple",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring-boot-dashboard.localapp.stop-multiple",
+                "title": "Localapp stop multiple",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.dashboard.livedata.refresh",
+                "title": "Dashboard livedata refresh",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.apps.focus",
+                "title": "Apps focus",
+                "category": "Spring Boot Dashboard"
+            }
+        ]
     }
 }
