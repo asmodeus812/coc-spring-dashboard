@@ -1,0 +1,43 @@
+{
+    "name": "coc-spring-dashboard",
+    "version": "0.0.1",
+    "description": "Spring Boot dashboard for coc.nvim",
+    "author": "Svetlozar Iliev <svetlozar321@gmail.com>",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/asmodeus812/coc-spring-dashboard"
+    },
+    "main": "lib/index.js",
+    "keywords": [
+        "coc.nvim"
+    ],
+    "engines": {
+        "coc": "^0.0.82"
+    },
+    "activationEvents": [
+        "onLanguage:java"
+    ],
+    "extensionDependencies": [
+        "coc-springboot",
+        "coc-java"
+    ],
+    "scripts": {
+        "build": "node esbuild.mjs",
+        "prepare": "node esbuild.mjs",
+        "typecheck": "tsc --noEmit"
+    },
+    "devDependencies": {
+        "coc.nvim": "^0.0.83-next.18",
+        "esbuild": "^0.19.8",
+        "typescript": "^5.3.3"
+    },
+    "contributes": {
+        "configuration": {
+            "type": "object",
+            "title": "Spring Boot Dashboard",
+            "properties": {}
+        },
+        "commands": []
+    }
+}
