@@ -185,6 +185,16 @@
                 "command": "spring.mappings.focus",
                 "title": "Mappings focus",
                 "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.properties.find",
+                "title": "Properties find",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.properties.focus",
+                "title": "Properties focus",
+                "category": "Spring Boot Dashboard"
             }
         ]
     }
