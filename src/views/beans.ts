@@ -1,18 +1,12 @@
 import * as coc from "coc.nvim";
 import { BootApp } from "../apps";
-import { Dashboard, NodeCache, findInView, registerView, stateIcon } from "../dashboard";
+import { AppGroup, Dashboard, NodeCache, appGroups, findInView, registerView, stateIcon } from "../dashboard";
 import { LiveApp } from "../live";
 import { IndexBean } from "../sts";
 import { StaticBean } from "../symbols";
 import { LocationEntry, jumpTo, showLocationList } from "../util";
 
-export interface BeanGroup {
-    kind: "group";
-    key: string;
-    label: string;
-    app?: BootApp;
-    live?: LiveApp;
-}
+export type BeanGroup = AppGroup;
 
 export interface BeanNode {
     kind: "bean";
@@ -129,10 +123,7 @@ export class BeansView implements coc.TreeDataProvider<BeansElement> {
     }
 
     private groups(): BeanGroup[] {
-        const lives: LiveApp[] = [...this.d.live.apps.values()];
-        return lives.length > 0
-            ? lives.map(l => Object.assign(this.cache.get<BeanGroup>(`live:${l.process.processKey}`, () => ({ kind: "group", key: `live:${l.process.processKey}`, label: l.process.processName })), { live: l }))
-            : this.d.apps.apps.map(a => this.cache.get<BeanGroup>(`app:${a.mainClass}`, () => ({ kind: "group", key: `app:${a.mainClass}`, label: a.name, app: a })));
+        return appGroups<BeansElement, BeanGroup>(this.d, this.cache);
     }
 
     private beans(group: BeanGroup): BeanNode[] {

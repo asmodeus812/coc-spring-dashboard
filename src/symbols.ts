@@ -22,6 +22,13 @@ export class StaticBean {
 }
 
 /**
+ * The label of a request mapping, the pattern with its method when it has one.
+ */
+export function endpointLabel(pattern: string, method?: string): string {
+    return method ? `${pattern} [${method}]` : pattern;
+}
+
+/**
  * A request mapping defined in the source, from the `@/` workspace symbols: `@/path -- GET`.
  */
 export class StaticEndpoint {
@@ -37,7 +44,7 @@ export class StaticEndpoint {
     }
 
     public get label(): string {
-        return this.method ? `${this.pattern} [${this.method}]` : this.pattern;
+        return endpointLabel(this.pattern, this.method);
     }
 }
 

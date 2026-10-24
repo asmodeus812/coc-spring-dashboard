@@ -1,6 +1,6 @@
 import * as coc from "coc.nvim";
-import { AppsView } from "./apps";
-import { LiveData } from "./live";
+import { AppsView, BootApp } from "./apps";
+import { LiveApp, LiveData } from "./live";
 import { StsApi } from "./sts";
 import { Symbols } from "./symbols";
 
@@ -67,4 +67,22 @@ export class NodeCache<T> {
         this.nodes.set(key, node);
         return node;
     }
+}
+
+/**
+ * The group of a tree of beans or mappings: one per live app, or one per app of the workspace while none is live.
+ */
+export interface AppGroup {
+    kind: "group";
+    key: string;
+    label: string;
+    app?: BootApp;
+    live?: LiveApp;
+}
+
+export function appGroups<E, G extends E & AppGroup>(d: Dashboard, cache: NodeCache<E>): G[] {
+    const lives: LiveApp[] = [...d.live.apps.values()];
+    return lives.length > 0
+        ? lives.map(l => Object.assign(cache.get<G>(`live:${l.process.processKey}`, () => ({ kind: "group", key: `live:${l.process.processKey}`, label: l.process.processName }) as G), { live: l }))
+        : d.apps.apps.map(a => cache.get<G>(`app:${a.mainClass}`, () => ({ kind: "group", key: `app:${a.mainClass}`, label: a.name, app: a }) as G));
 }

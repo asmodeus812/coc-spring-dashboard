@@ -155,6 +155,36 @@
                 "command": "spring.beans.focus",
                 "title": "Beans focus",
                 "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.dashboard.endpoint.navigate",
+                "title": "Dashboard endpoint navigate",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.dashboard.endpoint.open",
+                "title": "Dashboard endpoint open",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.dashboard.mapping.showAll",
+                "title": "Dashboard mapping show all",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.dashboard.mapping.showDefined",
+                "title": "Dashboard mapping show defined",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.mappings.find",
+                "title": "Mappings find",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.mappings.focus",
+                "title": "Mappings focus",
+                "category": "Spring Boot Dashboard"
             }
         ]
     }
