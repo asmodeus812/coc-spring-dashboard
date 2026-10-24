@@ -10,6 +10,7 @@ import { registerMappings } from "./views/mappings";
 import { registerProperties } from "./views/properties";
 import { registerMemory } from "./views/memory";
 import { registerGutter } from "./gutter";
+import { registerRemote } from "./remote";
 
 export async function activate(context: coc.ExtensionContext): Promise<void> {
     start(context).catch(e => coc.window.showErrorMessage(`Spring Boot Dashboard: ${e}`));
@@ -34,6 +35,7 @@ async function start(context: coc.ExtensionContext): Promise<void> {
         registerProperties(d);
         registerMemory(d);
         registerGutter(d);
+        registerRemote(d);
         await live.init();
     }
 }

@@ -229,6 +229,16 @@
                 "command": "spring.dashboard.showUnderCursor",
                 "title": "Dashboard show under cursor",
                 "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.remoteApp.connect",
+                "title": "Remote app connect",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.remoteApp.disconnect",
+                "title": "Remote app disconnect",
+                "category": "Spring Boot Dashboard"
             }
         ]
     }
