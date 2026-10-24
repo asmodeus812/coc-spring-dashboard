@@ -70,6 +70,7 @@ export class Symbols implements coc.Disposable {
         if (index?.onSpringIndexUpdated) {
             this.disposables.push(index.onSpringIndexUpdated((details: { affectedProjects?: string[] } | undefined) => this.onIndexUpdated(details)));
         }
+        this.disposables.push(coc.workspace.onDidSaveTextDocument(() => this.refresh()));
         api.client.onReady().then(() => this.loadWhenReady()).catch(() => undefined);
     }
 

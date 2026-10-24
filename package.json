@@ -47,6 +47,15 @@
                     "type": "number",
                     "default": 10,
                     "description": "Width of the memory sparklines"
+                },
+                "spring.dashboard.enableGutter": {
+                    "type": "string",
+                    "enum": [
+                        "on",
+                        "off"
+                    ],
+                    "default": "on",
+                    "description": "Signs on the bean definitions and request mappings"
                 }
             }
         },
@@ -214,6 +223,11 @@
             {
                 "command": "spring.memoryView.focus",
                 "title": "Memory view focus",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.dashboard.showUnderCursor",
+                "title": "Dashboard show under cursor",
                 "category": "Spring Boot Dashboard"
             }
         ]
