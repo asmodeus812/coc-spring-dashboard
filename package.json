@@ -37,6 +37,16 @@
                     "type": "string",
                     "default": "{protocol}://{hostname}:{port}{contextPath}",
                     "description": "Url template of an app, {protocol} {hostname} {port} {contextPath}"
+                },
+                "spring.dashboard.memory-view.fetch-data.delay-in-milliseconds": {
+                    "type": "number",
+                    "default": 5000,
+                    "description": "Interval of the memory metrics poll"
+                },
+                "spring.dashboard.memory-view.display-data.max-datapoints": {
+                    "type": "number",
+                    "default": 10,
+                    "description": "Width of the memory sparklines"
                 }
             }
         },
@@ -194,6 +204,16 @@
             {
                 "command": "spring.properties.focus",
                 "title": "Properties focus",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.dashboard.memory.poll",
+                "title": "Dashboard memory poll",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring.memoryView.focus",
+                "title": "Memory view focus",
                 "category": "Spring Boot Dashboard"
             }
         ]

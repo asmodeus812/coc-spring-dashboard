@@ -8,6 +8,7 @@ import { Symbols } from "./symbols";
 import { registerBeans } from "./views/beans";
 import { registerMappings } from "./views/mappings";
 import { registerProperties } from "./views/properties";
+import { registerMemory } from "./views/memory";
 
 export async function activate(context: coc.ExtensionContext): Promise<void> {
     start(context).catch(e => coc.window.showErrorMessage(`Spring Boot Dashboard: ${e}`));
@@ -30,6 +31,7 @@ async function start(context: coc.ExtensionContext): Promise<void> {
         context.subscriptions.push(coc.commands.registerCommand("spring.staticData.refresh", () => d.symbols.refresh()));
         registerMappings(d);
         registerProperties(d);
+        registerMemory(d);
         await live.init();
     }
 }
