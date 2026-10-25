@@ -1,6 +1,6 @@
 {
     "name": "coc-spring-dashboard",
-    "version": "0.0.1",
+    "version": "0.1.0",
     "description": "Spring Boot dashboard for coc.nvim",
     "author": "Svetlozar Iliev <svetlozar321@gmail.com>",
     "license": "MIT",
