@@ -1,0 +1,303 @@
+*coc-spring-dashboard.txt*  Spring Boot dashboard for coc.nvim
+
+
+                   COC-SPRING-DASHBOARD REFERENCE MANUAL
+
+
+Spring Boot apps, beans, endpoints and memory          *coc-spring-dashboard*
+
+                                      Type |gO| to see the table of contents.
+
+==============================================================================
+INTRODUCTION                                     *coc-spring-dashboard-intro*
+
+coc-spring-dashboard shows the Spring Boot apps of the workspace in tree
+views:
+
+- The apps, running or stopped. |coc-spring-dashboard-apps|
+- The beans of each app. |coc-spring-dashboard-beans|
+- The endpoint mappings of each app. |coc-spring-dashboard-mappings|
+- The properties of each running app. |coc-spring-dashboard-properties|
+- The memory of each running app as sparklines.
+  |coc-spring-dashboard-memory|
+
+It also puts signs on bean definitions and request mappings in Java buffers
+|coc-spring-dashboard-signs| and connects remote apps
+|coc-spring-dashboard-remote|.
+
+Installation, requirements, setup and settings are in the README of the
+extension.
+
+coc-spring-dashboard defines no key mappings. You use it through
+`:CocCommand`, the tree windows and their actions menu.
+
+==============================================================================
+QUICKSTART                                   *coc-spring-dashboard-quickstart*
+
+Open the apps tree and the beans tree: >vim
+    :CocCommand spring-boot-dashboard.apps.show
+    :CocCommand spring.beans.focus
+<
+Every tree opens in a vertical split on the right. Press `<CR>` on a bean to
+go to its definition, and the actions key of the tree (`<Tab>` by default)
+for the other actions. |coc-spring-dashboard-actions|
+
+==============================================================================
+LIVE AND STATIC DATA                               *coc-spring-dashboard-live*
+
+Static data comes from the source code: the beans and request mappings that
+coc-springboot finds in the workspace. It is there as soon as the project is
+indexed.
+
+Live data comes from a running app: its beans, mappings, properties and
+memory. An app shows live data once the Spring language server of
+coc-springboot is connected to it. The README lists what the app needs.
+
+Icons of an app or of the group of an app in a tree:
+
+  Icon   Meaning ~
+  `●`      the app is running, the group shows live data
+  `○`      the app is stopped, the group shows static data
+
+The description after a group says which data it shows:
+
+  Description      Meaning ~
+  `live, all`        live data, every bean or mapping of the app
+  `live, defined`    live data, only what is defined in the source
+  `defined`          static data from the source
+
+Refresh the data by hand: >vim
+    :CocCommand spring.dashboard.livedata.refresh
+    :CocCommand spring.staticData.refresh
+<
+The first reloads the live data of the running apps, the second rescans the
+source for beans and mappings.
+
+==============================================================================
+VIEWS                                             *coc-spring-dashboard-views*
+
+Each view has a command that opens it, or moves to it when it is open.
+
+  View                       Command ~
+  SPRING APPS                `spring-boot-dashboard.apps.show`
+                             `spring.apps.focus`
+  SPRING BEANS               `spring.beans.focus`
+  SPRING ENDPOINT MAPPINGS   `spring.mappings.focus`
+  SPRING PROPERTIES          `spring.properties.focus`
+  SPRING MEMORY              `spring.memoryView.focus`
+
+------------------------------------------------------------------------------
+APPS                                               *coc-spring-dashboard-apps*
+
+One line per Spring Boot app of the workspace. A running app has `●` and the
+description `running :8080` with its port; a stopped app has `○` and the
+description `stopped`. The tooltip shows the main class.
+
+`spring-boot-dashboard.refresh` reloads the list of apps.
+
+Run, Debug and Stop are not implemented yet; their actions and commands
+show a message |coc-spring-dashboard-messages|. The profile variants ask for
+"Active profiles (comma separated)" first. The commands:
+
+  `spring-boot-dashboard.localapp.run`
+  `spring-boot-dashboard.localapp.runWithProfile`
+  `spring-boot-dashboard.localapp.debug`
+  `spring-boot-dashboard.localapp.debugWithProfile`
+  `spring-boot-dashboard.localapp.stop`
+  `spring-boot-dashboard.localapp.run-multiple`
+  `spring-boot-dashboard.localapp.debug-multiple`
+  `spring-boot-dashboard.localapp.stop-multiple`
+
+Without a tree line they ask which app to use; the `-multiple` commands let
+you pick several apps, stopped ones for run and debug, running ones for stop.
+
+`spring-boot-dashboard.localapp.open` opens a running app in the browser.
+|coc-spring-dashboard-browser|
+
+------------------------------------------------------------------------------
+BEANS                                             *coc-spring-dashboard-beans*
+
+One group per app, with the bean names under it. A bean line has:
+
+  `◆` highlighted   the bean is defined in the source, `<CR>` goes there
+  `◆` dimmed        the bean has no source in the workspace, the
+                  description says `no source`
+
+Commands that work on a bean, the one under the cursor in the tree or one
+you pick:
+
+  `spring.dashboard.bean.navigate`           go to the definition
+  `spring.dashboard.bean.open`               go to the definition
+  `spring.dashboard.bean.showDependencies`   |coc-spring-dashboard-relations|
+  `spring.dashboard.bean.showInjectedInto`   |coc-spring-dashboard-relations|
+  `spring.dashboard.bean.showHierarchy`      |coc-spring-dashboard-relations|
+
+------------------------------------------------------------------------------
+ENDPOINT MAPPINGS                              *coc-spring-dashboard-mappings*
+
+One group per app, with the request mappings under it, shown as the path and
+the HTTP method, for example `/owners/{id} [GET]`. A mapping line has:
+
+  `↗` highlighted   the mapping is defined in the source, `<CR>` goes there
+  `↗` dimmed        the mapping has no source in the workspace, the
+                  description says `no source`
+
+  `spring.dashboard.endpoint.navigate`   go to the definition
+  `spring.dashboard.endpoint.open`       open the endpoint in the browser
+
+------------------------------------------------------------------------------
+PROPERTIES                                   *coc-spring-dashboard-properties*
+
+One line per running app (`●`), with its property sources (`▤`) under it and
+the properties as `name: value` (`·`) under each source.
+
+------------------------------------------------------------------------------
+MEMORY                                           *coc-spring-dashboard-memory*
+
+One line per running app, with three lines under it:
+
+  `heap`        used heap in MB, followed by `/ <max> MB`
+  `non-heap`    used non-heap memory in MB
+  `gc pauses`   total time of the garbage collection pauses in ms,
+              followed by `(count <n>)`
+
+Each line shows a sparkline of the latest values, drawn with `▁▂▃▄▅▆▇█`,
+and the current value. The values are fetched every
+`spring.dashboard.memory-view.fetch-data.delay-in-milliseconds` and the
+sparkline keeps `spring.dashboard.memory-view.display-data.max-datapoints`
+values. `spring.dashboard.memory.poll` fetches them now.
+
+When an app stops its lines disappear.
+
+==============================================================================
+TREE ACTIONS                                    *coc-spring-dashboard-actions*
+
+Press the actions key of the tree (`<Tab>` by default) on a line to get a
+menu of what you can do with it:
+
+  Line             Actions ~
+  app              Run, Run with profile, Debug, Debug with profile, Stop,
+                   Open in browser (running apps only)
+  bean             Go to definition (beans with source), Show
+                   dependencies, Show injected into, Show hierarchy
+  mapping          Go to definition (mappings with source), Open in
+                   browser (running apps only)
+  bean or mapping  Show all, Show defined
+  group
+
+------------------------------------------------------------------------------
+SHOW ALL AND SHOW DEFINED                       *coc-spring-dashboard-defined*
+
+A running app has many beans and mappings that come from Spring itself.
+Show defined lists only the ones defined in your source, Show all lists
+every one. The choice applies to all live groups of the tree and the group
+description changes to `live, defined` or `live, all`. Static groups always
+show the defined ones.
+
+  `spring.dashboard.bean.showAll`         all live beans
+  `spring.dashboard.bean.showDefined`     only the defined beans
+  `spring.dashboard.mapping.showAll`      all live mappings
+  `spring.dashboard.mapping.showDefined`  only the defined mappings
+
+------------------------------------------------------------------------------
+FIND                                               *coc-spring-dashboard-find*
+
+The beans, mappings and properties trees have a filter. These commands open
+the tree when needed and start the filter, as if you pressed the filter key
+of the tree (`f` by default):
+
+  `spring.beans.find`
+  `spring.mappings.find`
+  `spring.properties.find`
+
+Type to narrow the lines, `<Esc>` ends the filter.
+
+------------------------------------------------------------------------------
+BEAN RELATIONS                                *coc-spring-dashboard-relations*
+
+The relations of a bean open in a |location-list| at the bottom:
+
+- Show dependencies, titled "Dependencies of <bean>": the beans it needs,
+  as `name: type` for a bean with source.
+- Show injected into, titled "<bean> is injected into": the beans that get
+  it injected, as `bean <- field` for a bean with source.
+- Show hierarchy, titled "Hierarchy of <bean>": its type, then its
+  supertypes indented.
+
+For a bean with source the entries come from the source and `<CR>` on an
+entry jumps to it. For a live bean without source they come from the
+running app.
+
+==============================================================================
+SIGNS IN THE CODE                                 *coc-spring-dashboard-signs*
+
+Java buffers get a sign in the sign column:
+
+  `◆`   a bean definition
+  `↗`   a request mapping
+
+Set `spring.dashboard.enableGutter` to `"off"` to hide them.
+
+Show the bean or endpoint under the cursor in its tree: >vim
+    :CocCommand spring.dashboard.showUnderCursor
+<
+It opens the beans or the mappings tree and selects the line. With the
+cursor on neither it says "No bean or endpoint under the cursor".
+
+==============================================================================
+REMOTE APPS                                      *coc-spring-dashboard-remote*
+
+A remote app is an app on another host that you reach over JMX. List them in
+`boot-java.remote-apps` of `coc-settings.json`: >json
+    "boot-java.remote-apps": [
+        {
+            "host": "staging",
+            "jmxurl": "service:jmx:rmi:///jndi/rmi://staging:9111/jmxrmi"
+        }
+    ]
+<
+  `spring.remoteApp.connect`      pick a remote app and connect it
+  `spring.remoteApp.disconnect`   pick a connected remote app and
+                                  disconnect it
+
+The pick lists each app as `host (jmxurl)`. A connected remote app shows
+live data in the trees like a local running app.
+
+==============================================================================
+OPEN IN BROWSER                                 *coc-spring-dashboard-browser*
+
+Open in browser on an app opens its root url, on a mapping it opens the url
+of the endpoint. The url follows `spring.dashboard.openUrl`, filled in with
+the port and context path of the running app. Both need the app to be
+running.
+
+==============================================================================
+MESSAGES                                       *coc-spring-dashboard-messages*
+
+"Spring Boot Dashboard needs coc-springboot and coc-java, not active: ..."
+    One of the two extensions is not installed or did not start. The
+    message names the missing ones. Install them, open a Java file of the
+    project and restart coc with `:CocRestart`.
+
+"Spring Boot Dashboard: ..."
+    The dashboard failed to start, the error follows. See the output
+    channel: `:CocCommand workspace.showOutput Spring Dashboard`.
+
+"Run is not implemented yet"
+"Debug is not implemented yet"
+"Stop is not implemented yet"
+    Start the app another way; the dashboard picks it up once it runs.
+
+"The app of ... is not running"
+    Open in browser on a mapping needs the app to run. Start it and
+    refresh the live data.
+
+"No bean or endpoint under the cursor"
+    `spring.dashboard.showUnderCursor` found no bean or mapping on the
+    cursor line. Move to a line with a `◆` or `↗` sign.
+
+"No remote apps to connect, add them to boot-java.remote-apps"
+    `boot-java.remote-apps` is empty, or every app in it is already
+    connected. |coc-spring-dashboard-remote|
+
+ vim:tw=78:ts=8:noet:ft=help:norl:

@@ -1,4 +1,81 @@
 # coc-spring-dashboard
 
-Spring Boot dashboard for coc.nvim, a port of
-[vscode-spring-boot-dashboard](https://github.com/microsoft/vscode-spring-boot-dashboard).
+Spring Boot dashboard for [coc.nvim](https://github.com/neoclide/coc.nvim):
+tree views of the Spring Boot apps of the workspace, their beans, endpoint
+mappings, properties and memory, and signs on bean definitions and request
+mappings in the code.
+
+It is a port of
+[microsoft/vscode-spring-boot-dashboard](https://github.com/microsoft/vscode-spring-boot-dashboard)
+(MIT). See [NOTICE](NOTICE) and [LICENSE](LICENSE).
+
+Using it inside Neovim is described in the help page:
+`:help coc-spring-dashboard`.
+
+## Requirements
+
+- coc-springboot and coc-java, installed and active. The dashboard gets all
+  of its data through them.
+- For live data (running state, live beans and mappings, properties,
+  memory), a running app with `spring-boot-starter-actuator` on its
+  classpath, started with these JVM arguments:
+
+  ```
+  -Dspring.jmx.enabled=true -Dmanagement.endpoints.jmx.exposure.include=*
+  ```
+
+- For apps that run on your machine, this coc-springboot setting in
+  `coc-settings.json`:
+
+  ```json
+  "boot-java.live-information.all-local-java-processes": true
+  ```
+
+## Installation
+
+```vim
+:CocInstall coc-spring-dashboard
+```
+
+Or build a checkout and add its folder to the runtimepath with your plugin
+manager:
+
+```sh
+npm ci
+npm run build
+```
+
+## Settings
+
+Set these keys in `coc-settings.json` (`:CocConfig` opens it).
+
+| Key | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `spring.dashboard.openUrl` | string | `"{protocol}://{hostname}:{port}{contextPath}"` | Url template of an app, {protocol} {hostname} {port} {contextPath}. |
+| `spring.dashboard.memory-view.fetch-data.delay-in-milliseconds` | number | `5000` | Interval of the memory metrics poll. |
+| `spring.dashboard.memory-view.display-data.max-datapoints` | number | `10` | Width of the memory sparklines. |
+| `spring.dashboard.enableGutter` | string (`on`, `off`) | `"on"` | Signs on the bean definitions and request mappings. |
+
+Remote apps are listed in `boot-java.remote-apps`, a coc-springboot
+setting; see `:help coc-spring-dashboard-remote`.
+
+## Troubleshooting
+
+- Failed requests to the Spring language server are logged to the output
+  channel "Spring Dashboard":
+  `:CocCommand workspace.showOutput Spring Dashboard`.
+- No trees, or a warning that coc-springboot or coc-java is not active:
+  check `:CocList extensions` and open a Java file of the project.
+- An app stays `○ stopped` while it runs: check the actuator dependency, the
+  JVM arguments and `boot-java.live-information.all-local-java-processes`
+  above, then run `:CocCommand spring.dashboard.livedata.refresh`.
+- Every message the dashboard shows is explained in
+  `:help coc-spring-dashboard-messages`.
+
+## Development
+
+```sh
+npm ci
+npm run build
+npm run typecheck
+```

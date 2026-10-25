@@ -2,7 +2,7 @@ import * as coc from "coc.nvim";
 import { AppsView, registerApps } from "./apps";
 import { Dashboard } from "./dashboard";
 import { PlaceholderLauncher } from "./launch";
-import { LiveData } from "./live";
+import { failed, LiveData } from "./live";
 import { waitForStsApi } from "./sts";
 import { Symbols } from "./symbols";
 import { registerBeans } from "./views/beans";
@@ -11,8 +11,10 @@ import { registerProperties } from "./views/properties";
 import { registerMemory } from "./views/memory";
 import { registerGutter } from "./gutter";
 import { registerRemote } from "./remote";
+import { registerHelp } from "./help";
 
 export async function activate(context: coc.ExtensionContext): Promise<void> {
+    await registerHelp(context).catch(e => failed("help page", e, undefined));
     start(context).catch(e => coc.window.showErrorMessage(`Spring Boot Dashboard: ${e}`));
 }
 
