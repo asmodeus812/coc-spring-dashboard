@@ -5,6 +5,7 @@ import { LiveApp, LiveData } from "./live";
 import { releaseView } from "./output";
 import { StsApi } from "./sts";
 import { Symbols } from "./symbols";
+import { need, ready } from "./ready";
 
 /**
  * Everything the views and features share.
@@ -30,6 +31,11 @@ export class AppTab {
     private readonly emitter = new coc.Emitter<void>();
     public readonly onDidChange: coc.Event<void> = this.emitter.event;
 
+    /** Tells the views to draw their hints again. */
+    public refresh(): void {
+        this.emitter.fire();
+    }
+
     public set(name: string | undefined): void {
         if (name !== this.name) {
             this.name = name;
@@ -53,11 +59,13 @@ export interface HintNode {
 export function hintOf(d: Dashboard, what: string, live: boolean): HintNode {
     const app: string | undefined = d.appTab.name;
     let label: string;
-    if (!live) {
+    if (!ready("spring")) {
+        label = "Spring Boot server not running";
+    } else if (!live) {
         label = `No ${what} yet`;
     } else if (app === undefined) {
         label = `Run an app to see its ${what}`;
-    } else if (d.apps.apps.some(a => a.name === app && d.apps.stateOf(a) !== "stopped")) {
+    } else if (d.apps.isStarted(app)) {
         label = `${app} is not connected yet`;
     } else {
         label = `Run ${app} to see its ${what}`;
@@ -119,10 +127,12 @@ export async function focusView(view: coc.TreeView<any>): Promise<void> {
  * Starts the filter of a view, the find commands of upstream.
  */
 export async function findInView(view: coc.TreeView<any>): Promise<void> {
-    await focusView(view);
-    const key: string = coc.workspace.getConfiguration("tree").get<string>("key.activeFilter", "f");
-    await coc.workspace.nvim.call("win_gotoid", [view.windowId]);
-    await coc.workspace.nvim.call("feedkeys", [key, "m"]);
+    if (need("spring")) {
+        await focusView(view);
+        const key: string = coc.workspace.getConfiguration("tree").get<string>("key.activeFilter", "f");
+        await coc.workspace.nvim.call("win_gotoid", [view.windowId]);
+        await coc.workspace.nvim.call("feedkeys", [key, "m"]);
+    }
 }
 
 /**

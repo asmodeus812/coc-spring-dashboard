@@ -14,8 +14,10 @@ Using it inside Neovim is described in the help page:
 
 ## Requirements
 
-- coc-springboot and coc-java, installed and active. The dashboard gets all
-  of its data through them.
+- coc-java and coc-springboot, installed and active (declared as extension
+  dependencies). The dashboard gets all of its data through them and waits
+  for their servers to start; until then it says "Java server starting" or
+  "Spring Boot server not running".
 - For live data (running state, live beans and mappings, properties,
   memory), a running app with `spring-boot-starter-actuator` on its
   classpath, started with these JVM arguments:
@@ -79,6 +81,8 @@ setting; see `:help coc-spring-dashboard-remote`.
 - Failed requests to the Spring language server are logged to the output
   channel "Spring Dashboard":
   `:CocCommand workspace.showOutput Spring Dashboard`.
+- Jumps from the views open in the window the app was started from, or the
+  first normal window of the previous tab when you are in an app tab.
 - No trees, or a warning that coc-springboot or coc-java is not active:
   check `:CocList extensions` and open a Java file of the project.
 - An app stays `○ stopped` while it runs: check the actuator dependency, the

@@ -8,11 +8,12 @@ function vimString(value: string): string {
 }
 
 /**
- * The tab variables of an app tab: the key of its app, its name, and the buffer of its terminal.
+ * The tab variables of an app tab: the key of its app, its name, the buffer of its terminal and the window it was started from.
  */
 const TAB_KEY: string = "spring_output";
 const TAB_NAME: string = "spring_name";
 const TAB_TERMINAL: string = "spring_terminal";
+const TAB_ORIGIN: string = "spring_origin";
 
 /**
  * A variable of a tab, the current tab when `tab` is 0.
@@ -94,7 +95,7 @@ export class OutputTabs {
      * Shows the terminal buffer in the tab of the app and builds its layout, a tab that exists is reused and the buffer
      * of the previous run is wiped. The focus returns to the tab it was in unless `focus` is set.
      */
-    public async show(tab: TabApp, bufnr: number, { focus }: { focus: boolean }): Promise<void> {
+    public async show(tab: TabApp, bufnr: number, { focus, origin = 0 }: { focus: boolean; origin?: number }): Promise<void> {
         const nvim = coc.workspace.nvim;
         const previous: number = (await nvim.call("tabpagenr")) as number;
         const found: number = await this.find(tab.key);
@@ -106,7 +107,7 @@ export class OutputTabs {
             }
         }
         try {
-            await this.place(tab, bufnr, found);
+            await this.place(tab, bufnr, found, origin);
             await this.layout(true);
         } finally {
             if (!focus) {
@@ -116,7 +117,7 @@ export class OutputTabs {
     }
 
     // the terminal buffer in the app's tab: a new tab at the end, or the one of the previous run
-    private async place(tab: TabApp, bufnr: number, found: number): Promise<void> {
+    private async place(tab: TabApp, bufnr: number, found: number, origin: number): Promise<void> {
         const nvim = coc.workspace.nvim;
         if (found === 0) {
             await nvim.command("$tabnew");
@@ -131,6 +132,9 @@ export class OutputTabs {
             } else {
                 await nvim.command("botright new");
             }
+        }
+        if (origin > 0) {
+            await setTabVar(TAB_ORIGIN, origin);
         }
         const old: number = (await nvim.call("bufnr", ["%"])) as number;
         const previous: number = await tabVar(TAB_TERMINAL, 0);
@@ -147,6 +151,14 @@ export class OutputTabs {
         await nvim.command(`silent! execute 'tcd ' . fnameescape(${vimString(tab.folder)})`);
         // the cursor on the last line keeps the terminal following the output; `normal!` is refused in terminal mode
         await nvim.call("cursor", [(await nvim.call("line", ["$"])) as number, 1]);
+    }
+
+    /**
+     * The window a launch started from, to open sources in later: the current window, or the origin of the current tab
+     * when that is an app tab itself.
+     */
+    public async origin(): Promise<number> {
+        return (await inAppTab()) ? await tabVar(TAB_ORIGIN, 0) : (await coc.workspace.nvim.call("win_getid")) as number;
     }
 
     /**
@@ -209,6 +221,7 @@ export class OutputTabs {
         const tab: number = (await nvim.call("tabpagenr")) as number;
         const views: coc.TreeView<any>[] = this.views();
         const terminal: number = name === "" ? 0 : await this.terminalWindow();
+        const before: number = (await nvim.call("win_getid")) as number;
         this.onApp(name === "" ? undefined : name);
         if (terminal > 0 && views.length > 0) {
             const complete: boolean = await this.viewsComplete(views, tab);
@@ -218,7 +231,12 @@ export class OutputTabs {
             if (!complete || reset) {
                 await nvim.command("wincmd =");
             }
-            await nvim.call("win_gotoid", [terminal]);
+            // only a rebuilt layout moved the focus: back to the window the user was in (the terminal when it is gone);
+            // a complete layout leaves the focus alone, the user may already be in another window of the tab
+            if (!complete) {
+                const stay: boolean = await tabOf(before) === tab;
+                await nvim.call("win_gotoid", [stay ? before : terminal]);
+            }
         }
     }
 
@@ -247,4 +265,84 @@ export class OutputTabs {
             await views[i].show("belowright vs");
         }
     }
+}
+
+/**
+ * Whether the current tab is an app tab.
+ */
+async function inAppTab(): Promise<boolean> {
+    return (await tabVar(TAB_KEY, "")) !== "";
+}
+
+/**
+ * The windows of a tab that hold a normal buffer: no terminal, no tree view.
+ */
+async function normalWindowsOf(tab: number): Promise<number[]> {
+    const nvim = coc.workspace.nvim;
+    const windows = (await nvim.call("getwininfo")) as { winid: number; tabnr: number; bufnr: number }[];
+    const normal: number[] = [];
+    for (const w of windows.filter(w => w.tabnr === tab)) {
+        const buftype = await nvim.call("getbufvar", [w.bufnr, "&buftype"]);
+        const filetype = await nvim.call("getbufvar", [w.bufnr, "&filetype"]);
+        if (buftype === "" && filetype !== "coctree") {
+            normal.push(w.winid);
+        }
+    }
+    return normal;
+}
+
+/**
+ * The window that sources open in from an app tab: the window the app was started from if it is still there, otherwise
+ * the first normal window of the previous tab, undefined when there is none.
+ */
+async function sourceWindow(): Promise<number | undefined> {
+    const origin: number = await tabVar(TAB_ORIGIN, 0);
+    const originStillOpen: boolean = origin > 0 && await tabOf(origin) > 0;
+    return originStillOpen ? origin : (await normalWindowsOf((await coc.workspace.nvim.call("tabpagenr", ["#"])) as number))[0];
+}
+
+async function openSourceTab(): Promise<number> {
+    await coc.workspace.nvim.command("tabnew");
+    return (await coc.workspace.nvim.call("win_getid")) as number;
+}
+
+export interface LocationEntry {
+    location?: coc.Location;
+    text: string;
+}
+
+/**
+ * Shows the entries in the location list of the previous window, entries without a location are plain text lines.
+ */
+export async function showLocationList(title: string, entries: LocationEntry[]): Promise<number> {
+    const nvim = coc.workspace.nvim;
+    const items = entries.map(e => e.location
+        ? { filename: coc.Uri.parse(e.location.uri).fsPath, lnum: e.location.range.start.line + 1, col: e.location.range.start.character + 1, text: e.text }
+        : { text: e.text });
+    const win: number = await focusSource();
+    await nvim.call("setloclist", [win, [], " ", { title, items }]);
+    await nvim.command("botright lopen");
+    return items.length;
+}
+
+/**
+ * Opens a location of a view in the source window, from a normal tab in the previous window.
+ */
+export async function openInSource(location: coc.Location): Promise<void> {
+    await focusSource();
+    await coc.workspace.jumpTo(location.uri, location.range.start);
+}
+
+/**
+ * Makes the window a source opens in the current one: from an app tab the window of `sourceWindow`, in a new tab when
+ * there is none, otherwise the previous window. Returns its id.
+ */
+export async function focusSource(): Promise<number> {
+    const nvim = coc.workspace.nvim;
+    if (await inAppTab()) {
+        await nvim.call("win_gotoid", [(await sourceWindow()) ?? await openSourceTab()]);
+    } else {
+        await nvim.command("wincmd p");
+    }
+    return (await nvim.call("win_getid")) as number;
 }

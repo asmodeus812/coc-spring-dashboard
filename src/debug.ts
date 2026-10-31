@@ -49,7 +49,7 @@ class NvimDapBackend implements DebugBackend {
             attached = await this.attached(target);
         }
         if (!attached) {
-            throw new Error(`no debugger attached within ${Math.round(timeout / 1000)} seconds`);
+            throw new Error(`debugger not attached within ${Math.round(timeout / 1000)} seconds`);
         }
     }
 

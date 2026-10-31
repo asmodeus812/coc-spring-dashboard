@@ -1,5 +1,6 @@
 import * as coc from "coc.nvim";
 import { Dashboard, focusView } from "./dashboard";
+import { need } from "./ready";
 import { Symbols } from "./symbols";
 import { config } from "./util";
 
@@ -55,7 +56,7 @@ async function showUnderCursor(d: Dashboard): Promise<string | undefined> {
         await focusView(view);
         await view.reveal(element, { select: true, focus: true });
     } else {
-        coc.window.showWarningMessage("No bean or endpoint under the cursor");
+        coc.window.showWarningMessage("No bean or endpoint here");
     }
     return element ? key : undefined;
 }
@@ -67,7 +68,7 @@ export function registerGutter(d: Dashboard): Gutter {
         d.symbols.onDidChange(() => gutter.placeAll()),
         coc.events.on("BufEnter", async (bufnr: number) => { await gutter.place(bufnr); }),
         coc.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration("spring.dashboard.enableGutter")) gutter.placeAll(); }),
-        coc.commands.registerCommand("spring.dashboard.showUnderCursor", () => showUnderCursor(d)),
+        coc.commands.registerCommand("spring.dashboard.showUnderCursor", () => need("spring") ? showUnderCursor(d) : undefined),
     );
     return gutter;
 }

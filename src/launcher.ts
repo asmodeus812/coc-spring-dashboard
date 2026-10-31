@@ -7,7 +7,8 @@ import { AttachTarget, DebugBackend, detectBackend } from "./debug";
 import { AppLauncher, AppState, LaunchOptions, LaunchTarget, jmxArgs } from "./launch";
 import { OutputTabs } from "./output";
 import { LaunchArguments, LaunchPanel, LaunchSettings, defaultSettings, launchArguments } from "./settings";
-import { config, javaCommand, sleep } from "./util";
+import { waitFor } from "./ready";
+import { command, config, failed, javaCommand, sleep } from "./util";
 
 /**
  * An app the dashboard started: its terminal, the JVM and what a debugger needs to attach.
@@ -31,6 +32,9 @@ export class TerminalLauncher implements AppLauncher {
     private readonly emitter = new coc.Emitter<void>();
     public readonly onDidChangeState: coc.Event<void> = this.emitter.event;
 
+    /** Whether the live data has a process of a pid, set from the live data: its own connection ends the polling. */
+    public connected: (pid: number) => boolean = () => false;
+
     private readonly panel: LaunchPanel;
 
     constructor(private readonly context: coc.ExtensionContext, private readonly output: OutputTabs) {
@@ -50,9 +54,9 @@ export class TerminalLauncher implements AppLauncher {
         const settings: LaunchSettings | undefined = await this.panel.open(app, "Save");
         let message: string;
         if (settings === undefined) {
-            message = `Launch settings of ${app.name} unchanged`;
+            message = `${app.name} settings unchanged`;
         } else {
-            message = `Launch settings of ${app.name} saved`;
+            message = `${app.name} settings saved`;
             coc.window.showInformationMessage(message);
         }
         return message;
@@ -81,9 +85,9 @@ export class TerminalLauncher implements AppLauncher {
         }
         let message: string;
         if (shown) {
-            message = `Dashboard of ${app.name}`;
+            message = `Dashboard ${app.name}`;
         } else {
-            message = `${app.name} has not run yet`;
+            message = `${app.name} not run yet`;
             coc.window.showWarningMessage(message);
         }
         return message;
@@ -93,7 +97,7 @@ export class TerminalLauncher implements AppLauncher {
         const session: Session | undefined = this.sessions.get(app.mainClass);
         let message: string;
         if (session === undefined || session.state !== "running" || session.jdwpPort === undefined) {
-            message = `${app.name} was not started by the dashboard with Run`;
+            message = `${app.name} not started with Run`;
             coc.window.showWarningMessage(message);
         } else {
             const backend: DebugBackend | undefined = await detectBackend();
@@ -111,7 +115,7 @@ export class TerminalLauncher implements AppLauncher {
         const target: number | undefined = session && session.state !== "stopped" ? session.pid : pid;
         let message: string;
         if (target === undefined) {
-            message = `${app.name} is not running`;
+            message = `${app.name} not running`;
             coc.window.showWarningMessage(message);
         } else {
             this.terminate(target, session, app.name);
@@ -133,7 +137,7 @@ export class TerminalLauncher implements AppLauncher {
         const existing: Session | undefined = this.sessions.get(app.mainClass);
         let message: string;
         if (existing && existing.state !== "stopped") {
-            message = `${app.name} is already running`;
+            message = `${app.name} already running`;
             coc.window.showWarningMessage(message);
         } else {
             message = await this.startNew(app, options, debug);
@@ -149,14 +153,15 @@ export class TerminalLauncher implements AppLauncher {
         } else {
             const values: LaunchSettings | undefined = await this.settings(app, debug ? "Debug" : "Run", options);
             if (values === undefined) {
-                message = `Launch of ${app.name} cancelled`;
+                message = `${app.name} cancelled`;
             } else {
                 const session: Session = { state: "starting", backend };
                 this.sessions.set(app.mainClass, session);
                 this.emitter.fire();
                 message = await this.launch(app, session, values, debug).catch(e => {
                     this.setState(session, "stopped");
-                    coc.window.showErrorMessage(`Spring Boot Dashboard: ${app.name} did not start: ${e instanceof Error ? e.message : String(e)}`);
+                    failed(`start ${app.name}`, e, undefined);
+                    coc.window.showErrorMessage(`${app.name} did not start`);
                     return `${app.name} did not start`;
                 });
             }
@@ -181,12 +186,13 @@ export class TerminalLauncher implements AppLauncher {
             `-agentlib:jdwp=transport=dt_socket,server=y,suspend=${debug ? "y" : "n"},address=127.0.0.1:${jdwpPort}`,
             `@${argfile}`,
         ];
+        const origin: number = await this.output.origin();
         const terminal: coc.Terminal = await coc.window.createTerminal({ name: `Spring: ${app.name}`, shellPath: java, shellArgs: vmArgs, cwd: app.path, env: launch.env });
         session.terminal = terminal;
         session.jdwpPort = jdwpPort;
         session.pid = await terminal.processId;
-        void connectLive(session);
-        await this.output.show({ key: app.mainClass, name: app.name, folder: app.path }, terminal.bufnr, { focus: config<boolean>("launch.focusOutput", false) });
+        void connectLive(session, () => session.pid !== undefined && this.connected(session.pid));
+        await this.output.show({ key: app.mainClass, name: app.name, folder: app.path }, terminal.bufnr, { focus: config<boolean>("launch.focusOutput", false), origin });
 
         let message: string;
         if (debug && session.backend) {
@@ -214,12 +220,12 @@ export class TerminalLauncher implements AppLauncher {
             this.watchDebugger(session, backend, target);
             message = `Debugging ${app.name}`;
         } catch (e) {
-            const reason: string = e instanceof Error ? e.message : String(e);
             if (wasWaiting && session.pid !== undefined) {
                 this.terminate(session.pid, session, app.name);
             }
-            coc.window.showErrorMessage(`Spring Boot Dashboard: ${wasWaiting ? `${app.name} stopped, ` : ""}${reason}`);
-            message = reason;
+            failed(`attach ${app.name}`, e, undefined);
+            message = wasWaiting ? `${app.name} stopped, no debugger` : "Debugger not attached";
+            coc.window.showErrorMessage(message);
         }
         return message;
     }
@@ -248,7 +254,7 @@ export class TerminalLauncher implements AppLauncher {
     private terminate(pid: number, session: Session | undefined, name: string): void {
         signal(pid, false).then(async ok => {
             if (!ok && await alive(pid)) {
-                coc.window.showErrorMessage(`Spring Boot Dashboard: ${name} could not be stopped, the process ${pid} did not accept the signal`);
+                coc.window.showErrorMessage(`${name} not stopped`);
             }
         }).catch(() => undefined);
         if (session?.killer) {
@@ -314,7 +320,7 @@ export class TerminalLauncher implements AppLauncher {
     }
 
     private noDebugger(): string {
-        const message: string = "No supported debugger found, Debug needs nvim-dap or vimspector";
+        const message: string = "No debugger found";
         coc.window.showWarningMessage(message);
         return message;
     }
@@ -322,8 +328,9 @@ export class TerminalLauncher implements AppLauncher {
 
 const WINDOWS: boolean = process.platform === "win32";
 const LIVE_CONNECT = "sts/livedata/connect";
-const LIVE_POLL_MS = 2000;
-const LIVE_POLL_MAX_MS = 5000;
+const LIVE_POLL_MS = [2000, 4000, 8000, 15000];
+const LIVE_GIVE_UP_MS = 180000;
+const LIST_TIMEOUT_MS = 10000;
 
 function quote(value: string): string {
     return `"${value.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}"`;
@@ -377,28 +384,33 @@ async function alive(pid: number): Promise<boolean> {
 }
 
 /**
- * Connects the live data of a started app: the entry of the session's pid in the language server's list of local
- * processes is connected as soon as it shows up, its automatic connection does not reliably pick up a
- * fresh JVM. The language server may come up long after the app, so it keeps polling, slower over time, until the
- * entry shows up or the app stops; an entry already connected offers refresh instead.
+ * Connects the live data of a started app: once the spring boot server is ready the entry of the session's pid in its
+ * list of local processes is connected as soon as it shows up, its automatic connection does not reliably pick up a
+ * fresh JVM. The list is asked for with a growing delay (2, 4, 8, then every 15 s), one request at a time, until the app
+ * is connected, by the server itself too, or the app stops. After 3 minutes of asking it gives up with a line in the
+ * output channel; an entry already connected offers refresh instead.
  */
-async function connectLive(session: Session): Promise<void> {
+async function connectLive(session: Session, connected: () => boolean): Promise<void> {
     const pid: string = String(session.pid);
     // the list keys a local process by its pid alone, `<pid> - <main class>` once connected, the label ends in `(pid: N)`
     const ours = (p: any): boolean =>
         p?.processKey === pid || (typeof p?.processKey === "string" && p.processKey.startsWith(`${pid} - `)) || (typeof p?.label === "string" && p.label.endsWith(`(pid: ${pid})`));
-    let wait: number = LIVE_POLL_MS;
-    let done: boolean = false;
-    while (!done && session.state !== "stopped") {
-        await sleep(wait);
-        wait = Math.min(wait + 1000, LIVE_POLL_MAX_MS);
-        const processes: any[] = (await coc.commands.executeCommand<any[]>("sts/livedata/listProcesses").catch(() => [])) ?? [];
-        const entry: any = processes.find(ours);
-        if (entry !== undefined) {
-            if (entry.action === LIVE_CONNECT) {
-                await coc.commands.executeCommand(LIVE_CONNECT, entry).catch(() => undefined);
+    const stopped = (): boolean => session.state === "stopped" || connected();
+    if (await waitFor("spring", stopped)) {
+        const until: number = Date.now() + LIVE_GIVE_UP_MS;
+        let attempt: number = 0;
+        while (!stopped() && Date.now() < until) {
+            await sleep(LIVE_POLL_MS[Math.min(attempt++, LIVE_POLL_MS.length - 1)]);
+            if (!stopped()) {
+                const processes: any[] = (await Promise.race([command<any[]>("sts/livedata/listProcesses"), new Promise<any[]>(resolve => setTimeout(() => resolve([]), LIST_TIMEOUT_MS))]).catch(() => [])) ?? [];
+                const entry: any = processes.find(ours);
+                if (entry !== undefined && !stopped() && entry.action === LIVE_CONNECT) {
+                    await command(LIVE_CONNECT, entry).catch(() => undefined);
+                }
             }
-            done = true;
+        }
+        if (!stopped()) {
+            failed(`connect the live data of ${pid}`, "not connected after 3 minutes", undefined);
         }
     }
 }

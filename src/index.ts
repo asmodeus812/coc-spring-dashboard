@@ -4,6 +4,7 @@ import { AppTab, Dashboard } from "./dashboard";
 import { TerminalLauncher } from "./launcher";
 import { LiveData } from "./live";
 import { OutputTabs } from "./output";
+import { waitFor } from "./ready";
 import { waitForStsApi } from "./sts";
 import { Symbols } from "./symbols";
 import { registerBeans } from "./views/beans";
@@ -17,7 +18,7 @@ import { failed } from "./util";
 
 export async function activate(context: coc.ExtensionContext): Promise<void> {
     await registerHelp(context).catch(e => failed("help page", e, undefined));
-    start(context).catch(e => coc.window.showErrorMessage(`Spring Boot Dashboard: ${e}`));
+    start(context).catch(() => coc.window.showErrorMessage("Dashboard not started"));
 }
 
 /**
@@ -26,12 +27,14 @@ export async function activate(context: coc.ExtensionContext): Promise<void> {
 async function start(context: coc.ExtensionContext): Promise<void> {
     const api = await waitForStsApi();
     if (api === undefined) {
-        coc.window.showWarningMessage(`Spring Boot Dashboard needs coc-springboot and coc-java, not active: ${["coc-springboot", "coc-java"].filter(id => !coc.extensions.all.find(e => e.id === id)?.isActive).join(", ")}`);
+        const inactive: string[] = ["coc-springboot", "coc-java"].filter(id => !coc.extensions.all.find(e => e.id === id)?.isActive);
+        coc.window.showWarningMessage(`${inactive.join(", ")} not active`);
     } else {
         const live = new LiveData(api);
         const symbols = new Symbols(api);
         const tabs = new OutputTabs();
         const launcher = new TerminalLauncher(context, tabs);
+        launcher.connected = pid => live.byPid(pid) !== undefined;
         const d: Dashboard = { context, api, live, symbols, apps: new AppsView(live, launcher), appTab: new AppTab(), views: new Map(), finders: new Map() };
         context.subscriptions.push(live, symbols);
         registerApps(d);
@@ -44,5 +47,6 @@ async function start(context: coc.ExtensionContext): Promise<void> {
         registerGutter(d);
         registerRemote(d);
         await live.init();
+        waitFor("spring").then(() => d.appTab.refresh()).catch(() => undefined);
     }
 }

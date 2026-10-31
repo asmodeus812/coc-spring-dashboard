@@ -47,7 +47,7 @@ export interface StsApi {
 
 /**
  * Waits until coc-java and coc-springboot are active and returns the api of coc-springboot, undefined when either never
- * shows up. A runtime check instead of extensionDependencies, with which coc silently skips the activation when one is missing.
+ * shows up.
  */
 export async function waitForStsApi(timeout: number = 300000): Promise<StsApi | undefined> {
     const started: number = Date.now();

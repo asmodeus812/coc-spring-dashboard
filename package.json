@@ -1,6 +1,6 @@
 {
     "name": "coc-spring-dashboard",
-    "version": "0.3.0",
+    "version": "0.3.1",
     "description": "Spring Boot dashboard for coc.nvim",
     "author": "Svetlozar Iliev <svetlozar321@gmail.com>",
     "license": "MIT",
@@ -15,6 +15,10 @@
     "engines": {
         "coc": "^0.0.82"
     },
+    "extensionDependencies": [
+        "coc-java",
+        "coc-springboot"
+    ],
     "activationEvents": [
         "onLanguage:java"
     ],
@@ -175,21 +179,6 @@
             {
                 "command": "spring-boot-dashboard.localapp.open",
                 "title": "Open a running app in the browser",
-                "category": "Spring Boot Dashboard"
-            },
-            {
-                "command": "spring-boot-dashboard.localapp.run-multiple",
-                "title": "Run several apps",
-                "category": "Spring Boot Dashboard"
-            },
-            {
-                "command": "spring-boot-dashboard.localapp.debug-multiple",
-                "title": "Debug several apps",
-                "category": "Spring Boot Dashboard"
-            },
-            {
-                "command": "spring-boot-dashboard.localapp.stop-multiple",
-                "title": "Stop several apps",
                 "category": "Spring Boot Dashboard"
             },
             {

@@ -3,17 +3,18 @@ import * as fs from "fs";
 import { Dashboard, TREE_SPLIT, registerView, stateIcon } from "./dashboard";
 import { AppLauncher, AppState, LaunchTarget } from "./launch";
 import { LiveApp, LiveData } from "./live";
-import { config, formatUrl, javaCommand, openUrl, projectRoot } from "./util";
+import { need, ready, waitFor } from "./ready";
+import { command, config, failed, formatUrl, javaCommand, openUrl, projectRoot } from "./util";
 
 /** Which apps a command can act on: any, the stopped ones, the running ones, the running ones without a debugger, those with a dashboard. */
 type AppFilter = "any" | "stopped" | "running" | "attachable" | "output";
 
 const NOTHING_TO_PICK: Record<AppFilter, string> = {
-    any: "No Spring Boot app found in the workspace",
-    stopped: "Every app is running already",
+    any: "No app found",
+    stopped: "No stopped app",
     running: "No running app",
-    attachable: "No running app to attach the debugger to",
-    output: "No app has a dashboard yet, run one first",
+    attachable: "No running app",
+    output: "No app dashboard",
 };
 
 /**
@@ -63,21 +64,33 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
      * Resolves the apps again, `report` (the command, not the retry timer) tells the user when that fails or finds none.
      */
     public async refresh(report: boolean = false): Promise<BootApp[]> {
+        if (report ? need("java") : ready("java")) {
+            await this.load(report);
+        }
+        return this.apps;
+    }
+
+    private async load(report: boolean): Promise<void> {
+        let found: MainClassData[] = [];
         let error: string | undefined;
-        const found: MainClassData[] = (await javaCommand<MainClassData[]>("vscode.java.resolveMainClass").catch(e => { error = e instanceof Error ? e.message : String(e); return []; })) ?? [];
+        try {
+            found = (await javaCommand<MainClassData[]>("vscode.java.resolveMainClass")) ?? [];
+        } catch (e) {
+            error = e instanceof Error ? e.message : String(e);
+        }
         this.apps = found
             .filter(m => m.filePath && fs.existsSync(m.filePath) && fs.readFileSync(m.filePath, "utf8").includes("@SpringBootApplication"))
             .map(m => this.apps.find(a => a.mainClass === m.mainClass) ?? new BootApp(m.projectName, m.mainClass, m.projectName, projectRoot(m.filePath)))
             .sort((a, b) => a.name.localeCompare(b.name));
         this.emitter.fire(undefined);
         if (report && error !== undefined) {
-            coc.window.showErrorMessage(`Spring Boot Dashboard: could not resolve the apps, the Java language server may still be starting (${error})`);
+            failed("resolve the apps", error, undefined);
+            coc.window.showErrorMessage("Apps not resolved");
         } else if (report && this.apps.length === 0) {
             coc.window.showWarningMessage(NOTHING_TO_PICK.any);
         } else if (report) {
-            this.notify(`Spring Boot Dashboard: found ${this.apps.length} app${this.apps.length === 1 ? "" : "s"}`);
+            this.notify(`Found ${this.apps.length} app${this.apps.length === 1 ? "" : "s"}`);
         }
-        return this.apps;
     }
 
     public liveOf(app: BootApp): LiveApp | undefined {
@@ -103,8 +116,11 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
         return state === "stopped" && this.liveOf(app) ? "running" : state;
     }
 
-    private active(app: BootApp): boolean {
-        return this.stateOf(app) !== "stopped";
+    /**
+     * Whether an app of the workspace by this name is starting, running or stopping.
+     */
+    public isStarted(name: string): boolean {
+        return this.apps.some(a => a.name === name && this.stateOf(a) !== "stopped");
     }
 
     // the state of an app with its port, as the tree and the app picker show it
@@ -142,7 +158,7 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
     }
 
     public async run(arg?: BootApp | string, profile?: string): Promise<string | undefined> {
-        const app = await this.resolve(arg, "stopped");
+        const app = need("java") ? await this.resolve(arg, "stopped") : undefined;
         return app ? this.started(app, await this.launcher.run(app, { profile })) : undefined;
     }
 
@@ -150,7 +166,7 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
      * The "with profile" commands open the launch panel with the profiles first, a profile argument skips that.
      */
     public async runWithProfile(arg?: BootApp | string, profile?: string): Promise<string | undefined> {
-        const app = await this.resolve(arg, "stopped");
+        const app = need("java") ? await this.resolve(arg, "stopped") : undefined;
         return app ? this.started(app, await this.launcher.run(app, { profile, pickProfiles: profile === undefined })) : undefined;
     }
 
@@ -165,17 +181,17 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
     }
 
     public async debug(arg?: BootApp | string, profile?: string): Promise<string | undefined> {
-        const app = await this.resolve(arg, "stopped");
+        const app = need("java") ? await this.resolve(arg, "stopped") : undefined;
         return app ? this.launcher.debug(app, { profile }) : undefined;
     }
 
     public async debugWithProfile(arg?: BootApp | string, profile?: string): Promise<string | undefined> {
-        const app = await this.resolve(arg, "stopped");
+        const app = need("java") ? await this.resolve(arg, "stopped") : undefined;
         return app ? this.launcher.debug(app, { profile, pickProfiles: profile === undefined }) : undefined;
     }
 
     public async settings(arg?: BootApp | string): Promise<string | undefined> {
-        const app = await this.resolve(arg);
+        const app = need("java") ? await this.resolve(arg) : undefined;
         return app ? this.launcher.configure(app) : undefined;
     }
 
@@ -185,22 +201,22 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
     }
 
     public async attach(arg?: BootApp | string): Promise<string | undefined> {
-        const app = await this.resolve(arg, "attachable");
+        const app = need("java") ? await this.resolve(arg, "attachable") : undefined;
         return app ? this.launcher.attach(app) : undefined;
     }
 
     public async stop(arg?: BootApp | string): Promise<string | undefined> {
         const app = await this.resolve(arg, "running");
-        return app ? this.stopApp(app, true) : undefined;
+        return app ? this.stopApp(app) : undefined;
     }
 
     /**
      * Stops an app, one that the dashboard did not start by the pid of its live process.
      */
-    private async stopApp(app: BootApp, announce: boolean): Promise<string> {
+    private async stopApp(app: BootApp): Promise<string> {
         const pid: string | undefined = this.liveOf(app)?.process.pid;
         const result: string = await this.launcher.stop(app, pid ? parseInt(pid, 10) : undefined);
-        if (announce && result.startsWith("Stopping ")) {
+        if (result.startsWith("Stopping ")) {
             this.notify(result);
         }
         return result;
@@ -210,28 +226,9 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
         const app = await this.resolve(arg, "running");
         const live = app ? this.liveOf(app) : undefined;
         if (app && !live) {
-            coc.window.showWarningMessage(`${app.name} has no live data yet, wait until it is connected`);
+            coc.window.showWarningMessage(`${app.name} not connected`);
         }
         return live ? openUrl(formatUrl(live.port, live.contextPath)) : undefined;
-    }
-
-    public async multiple(operation: "run" | "debug" | "stop", names?: string[]): Promise<string[]> {
-        const candidates = this.apps.filter(a => operation === "stop" ? this.active(a) : !this.active(a));
-        if (candidates.length === 0) {
-            coc.window.showWarningMessage(NOTHING_TO_PICK[operation === "stop" ? "running" : "stopped"]);
-        }
-        const picked: BootApp[] = candidates.length === 0 ? [] : names
-            ? candidates.filter(a => names.includes(a.name))
-            : ((await coc.window.showQuickPick(candidates.map(a => ({ label: a.name, app: a })), { canPickMany: true, title: `Select apps to ${operation}` })) ?? []).map(p => p.app);
-        const results: string[] = [];
-        for (const app of picked) {
-            results.push(await (operation === "stop" ? this.stopApp(app, false) : this.launcher[operation](app)));
-        }
-        const done: BootApp[] = picked.filter(a => operation === "stop" ? true : this.stateOf(a) === "running");
-        if (done.length > 0 && operation !== "debug" && (operation === "stop" || !config<boolean>("launch.focusOutput", false))) {
-            this.notify(`${operation === "stop" ? "Stopping" : "Started"} ${done.map(a => a.name).join(", ")}`);
-        }
-        return results;
     }
 
     /**
@@ -301,10 +298,7 @@ export function registerApps(d: Dashboard): AppsView {
         coc.commands.registerCommand(id("localapp.attach"), (arg?: BootApp | string) => provider.attach(arg)),
         coc.commands.registerCommand(id("localapp.stop"), (arg?: BootApp | string) => provider.stop(arg)),
         coc.commands.registerCommand(id("localapp.open"), (arg?: BootApp | string) => provider.open(arg)),
-        coc.commands.registerCommand(id("localapp.run-multiple"), (names?: string[]) => provider.multiple("run", names)),
-        coc.commands.registerCommand(id("localapp.debug-multiple"), (names?: string[]) => provider.multiple("debug", names), undefined, true),
-        coc.commands.registerCommand(id("localapp.stop-multiple"), (names?: string[]) => provider.multiple("stop", names)),
-        coc.commands.registerCommand("spring.dashboard.livedata.refresh", () => d.live.refresh(true)),
+        coc.commands.registerCommand("spring.dashboard.livedata.refresh", () => need("spring") ? d.live.refresh(true) : undefined),
     );
     const resolve = async (attempt: number): Promise<void> => {
         const apps: BootApp[] = await provider.refresh();
@@ -312,6 +306,6 @@ export function registerApps(d: Dashboard): AppsView {
             setTimeout(() => { resolve(attempt + 1).catch(() => undefined); }, 5000);
         }
     };
-    resolve(0).catch(() => undefined);
+    waitFor("java").then(() => resolve(0)).catch(() => undefined);
     return provider;
 }

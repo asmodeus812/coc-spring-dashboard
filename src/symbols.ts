@@ -1,4 +1,6 @@
 import * as coc from "coc.nvim";
+import { waitFor } from "./ready";
+import { sleep } from "./util";
 import { StsApi } from "./sts";
 
 /**
@@ -49,8 +51,9 @@ export class StaticEndpoint {
 }
 
 /**
- * The static beans and request mappings of the workspace. Loaded once the spring boot language server is ready and
- * reloaded on every spring index update, the server builds its index after it starts, so the first load can be empty.
+ * The static beans and request mappings of the workspace. Loaded once the spring boot language server is ready, tried
+ * again with a growing delay while it answers empty, and reloaded on every spring index update, the server builds its
+ * index after it starts, so the first loads can be empty.
  */
 export class Symbols implements coc.Disposable {
     public beans: StaticBean[] = [];
@@ -61,9 +64,7 @@ export class Symbols implements coc.Disposable {
     private queue: Promise<void> = Promise.resolve();
     private requestFailed: boolean = false;
     private timer: NodeJS.Timeout | undefined = undefined;
-    private retries: number = 0;
     private emptyRetries: number = 0;
-    private updated: boolean = false;
     private disposed: boolean = false;
 
     constructor(private readonly api: StsApi) {
@@ -82,7 +83,7 @@ export class Symbols implements coc.Disposable {
         this.queue = this.queue.then(() => this.load()).catch(() => undefined);
         await this.queue;
         if (report && this.requestFailed) {
-            coc.window.showErrorMessage("Spring Boot Dashboard: could not load the beans and endpoints, the Spring Boot language server may still be starting");
+            coc.window.showErrorMessage("Beans and endpoints not loaded");
         }
     }
 
@@ -100,7 +101,6 @@ export class Symbols implements coc.Disposable {
     }
 
     private onIndexUpdated(details: { affectedProjects?: string[] } | undefined): void {
-        this.updated = true;
         if (this.timer !== undefined) {
             clearTimeout(this.timer);
         }
@@ -115,16 +115,22 @@ export class Symbols implements coc.Disposable {
     }
 
     /**
-     * The first load, retried a bounded number of times while the server returns nothing and no index update came in.
+     * The first load, once the spring boot server is ready, retried a bounded number of times with a growing delay while
+     * the server returns nothing, an index update in between does not stop it.
      */
     private async loadWhenReady(): Promise<void> {
-        await this.refresh();
-        if (!this.disposed && !this.updated && this.beans.length === 0 && this.mappings.length === 0 && this.retries < 40) {
-            this.retries++;
-            this.timer = setTimeout(() => {
-                this.timer = undefined;
-                this.loadWhenReady().catch(() => undefined);
-            }, 3000);
+        let delay: number = 3000;
+        let retries: number = 0;
+        if (await waitFor("spring", () => this.disposed)) {
+            await this.refresh();
+            while (!this.disposed && this.beans.length === 0 && this.mappings.length === 0 && retries < 12) {
+                retries++;
+                await sleep(delay);
+                delay = Math.min(delay * 2, 30000);
+                if (!this.disposed) {
+                    await this.refresh();
+                }
+            }
         }
     }
 

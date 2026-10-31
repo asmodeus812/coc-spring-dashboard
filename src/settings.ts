@@ -36,11 +36,14 @@ const LEVELS: string[] = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"];
 const RESOURCES: string = path.join("src", "main", "resources");
 const OTHER: string = "Type another profile...";
 
+const CLASSPATH_ENTRIES: string = "org.eclipse.jdt.ls.core.classpathEntries";
+
 /**
  * The source folders of a project from the jdtls classpath, with the `config` folder of each.
  */
 async function sourceFolders(app: LaunchTarget): Promise<string[]> {
-    const entries: any[] = (await javaCommand<any>("java.project.getSettings", coc.Uri.file(app.path).toString(), ["org.eclipse.jdt.ls.core.classpathEntries"]).catch(() => undefined))?.["org.eclipse.jdt.ls.core.classpathEntries"] ?? [];
+    const projectSettings = await javaCommand<Record<string, any[]> | undefined>("java.project.getSettings", coc.Uri.file(app.path).toString(), [CLASSPATH_ENTRIES]).catch(() => undefined);
+    const entries: any[] = projectSettings?.[CLASSPATH_ENTRIES] ?? [];
     // jdtls may report the paths relative to its workspace (`/<project>/src/main/resources`): those resolve against the
     // project folder; the standard folders are always looked at, only the folders that exist are kept
     const resolved: string[] = entries

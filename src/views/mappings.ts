@@ -3,7 +3,8 @@ import { BootApp } from "../apps";
 import { AppGroup, Dashboard, HintNode, NodeCache, appGroups, findInView, hintItem, hintOf, registerView, stateIcon } from "../dashboard";
 import { LiveApp } from "../live";
 import { StaticEndpoint, endpointLabel } from "../symbols";
-import { formatUrl, jumpTo, openUrl } from "../util";
+import { formatUrl, openUrl } from "../util";
+import { openInSource } from "../output";
 
 export type MappingGroup = AppGroup;
 
@@ -99,7 +100,7 @@ export class MappingsView implements coc.TreeDataProvider<MappingsElement> {
     public async navigate(arg?: MappingsElement | string): Promise<string | undefined> {
         const mapping = this.resolve(arg);
         if (mapping?.symbol) {
-            await jumpTo(mapping.symbol.location);
+            await openInSource(mapping.symbol.location);
         }
         return mapping?.symbol ? mapping.label : undefined;
     }
@@ -108,7 +109,7 @@ export class MappingsView implements coc.TreeDataProvider<MappingsElement> {
         const mapping = this.resolve(arg);
         const live = mapping ? this.liveOf(mapping) : undefined;
         if (mapping && !live) {
-            coc.window.showWarningMessage(`The app of ${mapping.label} is not running`);
+            coc.window.showWarningMessage(`${mapping.label} app not running`);
         }
         return mapping && live ? openUrl(formatUrl(live.port, live.contextPath, mapping.pattern)) : undefined;
     }

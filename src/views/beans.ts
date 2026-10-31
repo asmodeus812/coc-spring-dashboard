@@ -4,7 +4,7 @@ import { AppGroup, Dashboard, HintNode, NodeCache, appGroups, findInView, hintIt
 import { LiveApp } from "../live";
 import { IndexBean } from "../sts";
 import { StaticBean } from "../symbols";
-import { LocationEntry, jumpTo, showLocationList } from "../util";
+import { LocationEntry, openInSource, showLocationList } from "../output";
 
 export type BeanGroup = AppGroup;
 
@@ -91,7 +91,7 @@ export class BeansView implements coc.TreeDataProvider<BeansElement> {
     public async navigate(arg?: BeansElement | string): Promise<string | undefined> {
         const bean = this.resolve(arg);
         if (bean?.symbol) {
-            await jumpTo(bean.symbol.location);
+            await openInSource(bean.symbol.location);
         }
         return bean?.symbol ? bean.id : undefined;
     }

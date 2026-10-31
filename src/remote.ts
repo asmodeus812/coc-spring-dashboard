@@ -1,5 +1,6 @@
 import * as coc from "coc.nvim";
 import { Dashboard } from "./dashboard";
+import { need } from "./ready";
 
 interface RemoteApp {
     jmxurl: string;
@@ -17,35 +18,37 @@ export function registerRemote(d: Dashboard): void {
     const connected: RemoteApp[] = [];
     const label = (a: RemoteApp) => `${a.host} (${a.jmxurl})`;
     const send = () => coc.commands.executeCommand("sts/livedata/remoteConnect", OWNER, connected);
-    d.context.subscriptions.push(
-        coc.commands.registerCommand("spring.remoteApp.connect", async () => {
-            const apps: RemoteApp[] = coc.workspace.getConfiguration("boot-java").get<RemoteApp[]>("remote-apps", []).filter(a => !connected.some(c => c.jmxurl === a.jmxurl));
-            let picked: { label: string; app: RemoteApp } | undefined;
-            if (apps.length === 0) {
-                coc.window.showWarningMessage("No remote apps to connect, add them to boot-java.remote-apps");
-            } else {
-                picked = await coc.window.showQuickPick(apps.map(a => ({ label: label(a), app: a })), { title: "Connect a remote app" });
-            }
+    const connect = async (): Promise<string | undefined> => {
+        const apps: RemoteApp[] = coc.workspace.getConfiguration("boot-java").get<RemoteApp[]>("remote-apps", []).filter(a => !connected.some(c => c.jmxurl === a.jmxurl));
+        let picked: { label: string; app: RemoteApp } | undefined;
+        if (apps.length === 0) {
+            coc.window.showWarningMessage("No remote app to connect");
+        } else {
+            picked = await coc.window.showQuickPick(apps.map(a => ({ label: label(a), app: a })), { title: "Connect a remote app" });
             if (picked) {
                 connected.push(picked.app);
                 await send();
                 coc.window.showInformationMessage(`Connecting ${label(picked.app)}`);
             }
-            return picked ? label(picked.app) : undefined;
-        }),
-        coc.commands.registerCommand("spring.remoteApp.disconnect", async () => {
-            let picked: { label: string; app: RemoteApp } | undefined;
-            if (connected.length === 0) {
-                coc.window.showWarningMessage("No connected remote app to disconnect");
-            } else {
-                picked = await coc.window.showQuickPick(connected.map(a => ({ label: label(a), app: a })), { title: "Disconnect a remote app" });
-            }
+        }
+        return picked ? label(picked.app) : undefined;
+    };
+    const disconnect = async (): Promise<string | undefined> => {
+        let picked: { label: string; app: RemoteApp } | undefined;
+        if (connected.length === 0) {
+            coc.window.showWarningMessage("No remote app to disconnect");
+        } else {
+            picked = await coc.window.showQuickPick(connected.map(a => ({ label: label(a), app: a })), { title: "Disconnect a remote app" });
             if (picked) {
                 connected.splice(connected.indexOf(picked.app), 1);
                 await send();
                 coc.window.showInformationMessage(`Disconnected ${label(picked.app)}`);
             }
-            return picked ? label(picked.app) : undefined;
-        }),
+        }
+        return picked ? label(picked.app) : undefined;
+    };
+    d.context.subscriptions.push(
+        coc.commands.registerCommand("spring.remoteApp.connect", () => need("spring") ? connect() : undefined),
+        coc.commands.registerCommand("spring.remoteApp.disconnect", () => need("spring") ? disconnect() : undefined),
     );
 }
