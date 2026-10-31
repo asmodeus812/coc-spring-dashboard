@@ -1,6 +1,6 @@
 {
     "name": "coc-spring-dashboard",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "description": "Spring Boot dashboard for coc.nvim",
     "author": "Svetlozar Iliev <svetlozar321@gmail.com>",
     "license": "MIT",
@@ -80,7 +80,7 @@
                 "spring.dashboard.launch.focusOutput": {
                     "type": "boolean",
                     "default": false,
-                    "description": "Switch to the output tab of an app when it is started"
+                    "description": "Switch to the dashboard tab of an app when it is started"
                 },
                 "spring.dashboard.apps": {
                     "type": "object",
@@ -158,8 +158,8 @@
                 "category": "Spring Boot Dashboard"
             },
             {
-                "command": "spring-boot-dashboard.localapp.output",
-                "title": "Show the output of an app",
+                "command": "spring-boot-dashboard.localapp.dashboard",
+                "title": "Show the dashboard tab of an app",
                 "category": "Spring Boot Dashboard"
             },
             {

@@ -32,6 +32,9 @@ export class LiveData implements coc.Disposable {
     public readonly onDidChange: coc.Event<LiveApp | undefined> = this.emitter.event;
     private readonly disposables: coc.Disposable[] = [];
     private readonly reloads: Map<string, number> = new Map();
+    /** Whether a dashboard view is on screen, set by the apps view; a refresh tells the user when it is not. */
+    public onScreen: () => boolean = () => false;
+    private listFailed: boolean = false;
 
     constructor(public readonly api: StsApi) {
         this.disposables.push(
@@ -42,7 +45,8 @@ export class LiveData implements coc.Disposable {
     }
 
     public async init(): Promise<void> {
-        const processes: LiveProcess[] = (await this.api.listConnectedProcesses().catch(e => failed("list connected processes", e, []))) ?? [];
+        this.listFailed = false;
+        const processes: LiveProcess[] = (await this.api.listConnectedProcesses().catch(e => { this.listFailed = true; return failed("list connected processes", e, []); })) ?? [];
         await Promise.all(processes.map(p => this.load(p)));
     }
 
@@ -56,8 +60,10 @@ export class LiveData implements coc.Disposable {
             let errors: number = 0;
             await Promise.all([...this.apps.values()].map(a => this.api.refreshLiveProcessData({ processKey: a.process.processKey, endpoint: "beans" }).catch(e => { errors++; return failed(`refresh ${a.process.processKey}`, e, undefined); })));
             await this.init();
-            if (report && errors > 0) {
-                coc.window.showErrorMessage(`Spring Boot Dashboard: the live data of ${errors} app${errors === 1 ? "" : "s"} could not be refreshed, see the Spring Dashboard output`);
+            if (report && (errors > 0 || this.listFailed)) {
+                coc.window.showErrorMessage(`Spring Boot Dashboard: the live data of ${errors > 0 ? `${errors} app${errors === 1 ? "" : "s"}` : "the connected apps"} could not be refreshed, see the Spring Dashboard output`);
+            } else if (report && !this.onScreen()) {
+                coc.window.showInformationMessage(`Spring Boot Dashboard: refreshed the live data of ${this.apps.size} app${this.apps.size === 1 ? "" : "s"}`);
             }
         }
     }

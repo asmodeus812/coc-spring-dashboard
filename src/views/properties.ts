@@ -1,11 +1,12 @@
 import * as coc from "coc.nvim";
-import { Dashboard, NodeCache, findInView, registerView } from "../dashboard";
+import { Dashboard, HintNode, NodeCache, findInView, hintItem, hintOf, registerView } from "../dashboard";
 import { LiveApp, PropertyGroup } from "../live";
 
 export type PropertiesElement =
     | { kind: "app"; key: string; live: LiveApp }
     | { kind: "source"; key: string; group: PropertyGroup }
-    | { kind: "property"; key: string; name: string; value: string };
+    | { kind: "property"; key: string; name: string; value: string }
+    | HintNode;
 
 /**
  * The properties view: the live properties of every connected app, grouped by their property source.
@@ -17,12 +18,16 @@ export class PropertiesView implements coc.TreeDataProvider<PropertiesElement> {
 
     constructor(private readonly d: Dashboard) {
         d.live.onDidChange(() => this.emitter.fire(undefined));
+        d.appTab.onDidChange(() => this.emitter.fire(undefined));
     }
 
     public async getChildren(element?: PropertiesElement): Promise<PropertiesElement[]> {
+        const lives: LiveApp[] = [...this.d.live.apps.values()];
         let children: PropertiesElement[];
         if (element === undefined) {
-            children = [...this.d.live.apps.values()].map(l => Object.assign(this.cache.get(`app:${l.process.processKey}`, () => ({ kind: "app", key: `app:${l.process.processKey}`, live: l })), { live: l }));
+            children = lives.length === 0
+                ? [hintOf(this.d, "properties", true)]
+                : lives.map(l => Object.assign(this.cache.get(`app:${l.process.processKey}`, () => ({ kind: "app", key: `app:${l.process.processKey}`, live: l })), { live: l }));
         } else if (element.kind === "app") {
             children = (await this.d.live.properties(element.live)).map(g => this.cache.get(`${element.key}/${g.name}`, () => ({ kind: "source", key: `${element.key}/${g.name}`, group: g })));
         } else if (element.kind === "source") {
@@ -34,6 +39,9 @@ export class PropertiesView implements coc.TreeDataProvider<PropertiesElement> {
     }
 
     public getTreeItem(element: PropertiesElement): coc.TreeItem {
+        if (element.kind === "hint") {
+            return hintItem(element);
+        }
         let label: string;
         let state: coc.TreeItemCollapsibleState;
         let icon: coc.TreeItemIcon;
@@ -59,7 +67,7 @@ export class PropertiesView implements coc.TreeDataProvider<PropertiesElement> {
 
 export function registerProperties(d: Dashboard): PropertiesView {
     const provider = new PropertiesView(d);
-    const view = registerView(d, "spring.properties", "SPRING PROPERTIES", provider, true);
+    const view = registerView(d, "spring.properties", "SPRING PROPERTIES", provider, { filter: true });
     d.context.subscriptions.push(coc.commands.registerCommand("spring.properties.find", () => findInView(view)));
     return provider;
 }

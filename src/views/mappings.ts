@@ -1,5 +1,6 @@
 import * as coc from "coc.nvim";
-import { AppGroup, Dashboard, NodeCache, appGroups, findInView, registerView, stateIcon } from "../dashboard";
+import { BootApp } from "../apps";
+import { AppGroup, Dashboard, HintNode, NodeCache, appGroups, findInView, hintItem, hintOf, registerView, stateIcon } from "../dashboard";
 import { LiveApp } from "../live";
 import { StaticEndpoint, endpointLabel } from "../symbols";
 import { formatUrl, jumpTo, openUrl } from "../util";
@@ -16,7 +17,7 @@ export interface MappingNode {
     symbol?: StaticEndpoint;
 }
 
-export type MappingsElement = MappingGroup | MappingNode;
+export type MappingsElement = MappingGroup | MappingNode | HintNode;
 
 /**
  * The pattern and method of a live mapping, as the actuator reports it.
@@ -51,7 +52,8 @@ export class MappingsView implements coc.TreeDataProvider<MappingsElement> {
     }
 
     public getChildren(element?: MappingsElement): MappingsElement[] {
-        return element === undefined ? this.groups() : (element.kind === "group" ? this.mappings(element) : []);
+        const groups: MappingsElement[] = this.groups();
+        return element === undefined ? (groups.length > 0 ? groups : [hintOf(this.d, "mappings", false)]) : (element.kind === "group" ? this.mappings(element) : []);
     }
 
     public getParent(element: MappingsElement): MappingsElement | undefined {
@@ -59,6 +61,9 @@ export class MappingsView implements coc.TreeDataProvider<MappingsElement> {
     }
 
     public getTreeItem(element: MappingsElement): coc.TreeItem {
+        if (element.kind === "hint") {
+            return hintItem(element);
+        }
         const item = new coc.TreeItem(element.label, element.kind === "group" ? coc.TreeItemCollapsibleState.Expanded : coc.TreeItemCollapsibleState.None);
         item.id = element.key;
         if (element.kind === "group") {
@@ -136,7 +141,7 @@ export class MappingsView implements coc.TreeDataProvider<MappingsElement> {
 
 export function registerMappings(d: Dashboard): MappingsView {
     const provider = new MappingsView(d);
-    const view = registerView(d, "spring.mappings", "SPRING ENDPOINT MAPPINGS", provider, true);
+    const view = registerView(d, "spring.mappings", "SPRING ENDPOINT MAPPINGS", provider, { filter: true });
     d.finders.set("spring.mappings", (key: string) => provider.find(key));
     d.context.subscriptions.push(
         coc.commands.registerCommand("spring.dashboard.endpoint.navigate", (arg?: MappingsElement | string) => provider.navigate(arg), undefined, true),

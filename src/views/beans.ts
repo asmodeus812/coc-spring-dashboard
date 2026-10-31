@@ -1,6 +1,6 @@
 import * as coc from "coc.nvim";
 import { BootApp } from "../apps";
-import { AppGroup, Dashboard, NodeCache, appGroups, findInView, registerView, stateIcon } from "../dashboard";
+import { AppGroup, Dashboard, HintNode, NodeCache, appGroups, findInView, hintItem, hintOf, registerView, stateIcon } from "../dashboard";
 import { LiveApp } from "../live";
 import { IndexBean } from "../sts";
 import { StaticBean } from "../symbols";
@@ -16,7 +16,7 @@ export interface BeanNode {
     symbol?: StaticBean;
 }
 
-export type BeansElement = BeanGroup | BeanNode;
+export type BeansElement = BeanGroup | BeanNode | HintNode;
 
 /**
  * The beans view: the live beans of every connected app (all, or only the ones defined in the source), the static
@@ -39,7 +39,8 @@ export class BeansView implements coc.TreeDataProvider<BeansElement> {
     }
 
     public getChildren(element?: BeansElement): BeansElement[] {
-        return element === undefined ? this.groups() : (element.kind === "group" ? this.beans(element) : []);
+        const groups: BeansElement[] = this.groups();
+        return element === undefined ? (groups.length > 0 ? groups : [hintOf(this.d, "beans", false)]) : (element.kind === "group" ? this.beans(element) : []);
     }
 
     public getParent(element: BeansElement): BeansElement | undefined {
@@ -47,6 +48,9 @@ export class BeansView implements coc.TreeDataProvider<BeansElement> {
     }
 
     public getTreeItem(element: BeansElement): coc.TreeItem {
+        if (element.kind === "hint") {
+            return hintItem(element);
+        }
         const item = new coc.TreeItem(element.kind === "group" ? element.label : element.id,
             element.kind === "group" ? coc.TreeItemCollapsibleState.Expanded : coc.TreeItemCollapsibleState.None);
         item.id = element.key;
@@ -161,7 +165,7 @@ export class BeansView implements coc.TreeDataProvider<BeansElement> {
 
 export function registerBeans(d: Dashboard): BeansView {
     const provider = new BeansView(d);
-    const view = registerView(d, "spring.beans", "SPRING BEANS", provider, true);
+    const view = registerView(d, "spring.beans", "SPRING BEANS", provider, { filter: true });
     d.finders.set("spring.beans", (key: string) => provider.find(key));
     d.context.subscriptions.push(
         coc.commands.registerCommand("spring.dashboard.bean.navigate", (arg?: BeansElement | string) => provider.navigate(arg), undefined, true),

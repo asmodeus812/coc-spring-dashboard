@@ -5,7 +5,7 @@ import { AppLauncher, AppState, LaunchTarget } from "./launch";
 import { LiveApp, LiveData } from "./live";
 import { config, formatUrl, javaCommand, openUrl, projectRoot } from "./util";
 
-/** Which apps a command can act on: any, the stopped ones, the running ones, the running ones without a debugger, those with output. */
+/** Which apps a command can act on: any, the stopped ones, the running ones, the running ones without a debugger, those with a dashboard. */
 type AppFilter = "any" | "stopped" | "running" | "attachable" | "output";
 
 const NOTHING_TO_PICK: Record<AppFilter, string> = {
@@ -13,7 +13,7 @@ const NOTHING_TO_PICK: Record<AppFilter, string> = {
     stopped: "Every app is running already",
     running: "No running app",
     attachable: "No running app to attach the debugger to",
-    output: "No app has output yet, run one first",
+    output: "No app has a dashboard yet, run one first",
 };
 
 /**
@@ -74,6 +74,8 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
             coc.window.showErrorMessage(`Spring Boot Dashboard: could not resolve the apps, the Java language server may still be starting (${error})`);
         } else if (report && this.apps.length === 0) {
             coc.window.showWarningMessage(NOTHING_TO_PICK.any);
+        } else if (report) {
+            this.notify(`Spring Boot Dashboard: found ${this.apps.length} app${this.apps.length === 1 ? "" : "s"}`);
         }
         return this.apps;
     }
@@ -132,7 +134,7 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
             { title: "Debug", handler: a => this.debug(a) },
             { title: "Debug with profile", handler: a => this.debugWithProfile(a) },
             { title: "Launch settings...", handler: a => this.settings(a) },
-            { title: "Show output", handler: a => this.output(a) },
+            { title: "Show app dashboard", handler: a => this.output(a) },
             { title: "Stop", handler: a => this.stop(a) },
             ...(this.launcher.state(app) === "running" ? [{ title: "Attach debugger", handler: (a: BootApp) => this.attach(a) }] : []),
             ...(this.liveOf(app) ? [{ title: "Open in browser", handler: (a: BootApp) => this.open(a) }] : []),
@@ -153,7 +155,7 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
     }
 
     /**
-     * A run in the background says it started, when neither the apps view nor the output tab show it.
+     * A run in the background says it started, when neither the apps view nor the dashboard show it.
      */
     private started(app: BootApp, result: string): string {
         if (this.stateOf(app) === "running" && !config<boolean>("launch.focusOutput", false)) {
@@ -282,23 +284,25 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
  */
 export function registerApps(d: Dashboard): AppsView {
     const provider: AppsView = d.apps;
-    const view = registerView(d, "spring.apps", "SPRING APPS", provider);
+    const view = registerView(d, "spring.apps", "SPRING APPS", provider, { listed: true });
     provider.onScreen = () => view.visible;
+    d.live.onScreen = () => [...d.views.values()].some(v => v.visible);
     const id = (name: string) => `spring-boot-dashboard.${name}`;
     d.context.subscriptions.push(
         coc.commands.registerCommand(id("apps.show"), () => view.show(TREE_SPLIT), undefined, true),
         coc.commands.registerCommand(id("refresh"), () => provider.refresh(true)),
         coc.commands.registerCommand(id("localapp.run"), (arg?: BootApp | string, profile?: string) => provider.run(arg, profile)),
-        coc.commands.registerCommand(id("localapp.runWithProfile"), (arg?: BootApp | string, profile?: string) => provider.runWithProfile(arg, profile)),
+        coc.commands.registerCommand(id("localapp.runWithProfile"), (arg?: BootApp | string, profile?: string) => provider.runWithProfile(arg, profile), undefined, true),
         coc.commands.registerCommand(id("localapp.debug"), (arg?: BootApp | string, profile?: string) => provider.debug(arg, profile)),
-        coc.commands.registerCommand(id("localapp.debugWithProfile"), (arg?: BootApp | string, profile?: string) => provider.debugWithProfile(arg, profile)),
+        coc.commands.registerCommand(id("localapp.debugWithProfile"), (arg?: BootApp | string, profile?: string) => provider.debugWithProfile(arg, profile), undefined, true),
         coc.commands.registerCommand(id("localapp.settings"), (arg?: BootApp | string) => provider.settings(arg)),
-        coc.commands.registerCommand(id("localapp.output"), (arg?: BootApp | string) => provider.output(arg)),
+        coc.commands.registerCommand(id("localapp.dashboard"), (arg?: BootApp | string) => provider.output(arg)),
+        coc.commands.registerCommand(id("localapp.output"), (arg?: BootApp | string) => provider.output(arg), undefined, true),
         coc.commands.registerCommand(id("localapp.attach"), (arg?: BootApp | string) => provider.attach(arg)),
         coc.commands.registerCommand(id("localapp.stop"), (arg?: BootApp | string) => provider.stop(arg)),
         coc.commands.registerCommand(id("localapp.open"), (arg?: BootApp | string) => provider.open(arg)),
         coc.commands.registerCommand(id("localapp.run-multiple"), (names?: string[]) => provider.multiple("run", names)),
-        coc.commands.registerCommand(id("localapp.debug-multiple"), (names?: string[]) => provider.multiple("debug", names)),
+        coc.commands.registerCommand(id("localapp.debug-multiple"), (names?: string[]) => provider.multiple("debug", names), undefined, true),
         coc.commands.registerCommand(id("localapp.stop-multiple"), (names?: string[]) => provider.multiple("stop", names)),
         coc.commands.registerCommand("spring.dashboard.livedata.refresh", () => d.live.refresh(true)),
     );

@@ -33,9 +33,9 @@ export interface AppLauncher {
     debug(app: LaunchTarget, options?: LaunchOptions): Promise<string>;
     /** Opens the launch settings panel of an app without launching. */
     configure(app: LaunchTarget): Promise<string>;
-    /** Switches to the output tab of an app. */
+    /** Switches to the dashboard tab of an app. */
     showOutput(app: LaunchTarget): Promise<string>;
-    /** Whether the app has an output tab, the one of its last run. */
+    /** Whether the app has a dashboard tab, or a terminal of its last run to build one from. */
     hasOutput(app: LaunchTarget): Promise<boolean>;
     /** Attaches the debugger to an app that was started with run. */
     attach(app: LaunchTarget): Promise<string>;

@@ -37,8 +37,8 @@ Using it inside Neovim is described in the help page:
 
 Run, Debug and Stop are done by the dashboard: it opens a
 launch panel (profiles, server port, logging, JVM options, program arguments
-and environment, remembered per app), starts the JVM with its output in a tab
-per app, and stops it with SIGTERM and then SIGKILL. The JMX arguments above
+and environment, remembered per app), starts the JVM in a tab per app, the
+dashboard of the app (Beans, Mappings, Properties and Memory over the terminal), and stops it with SIGTERM and then SIGKILL. The JMX arguments above
 are added for you for apps it starts.
 
 ## Installation
@@ -68,7 +68,7 @@ Set these keys in `coc-settings.json` (`:CocConfig` opens it).
 | `spring.dashboard.debug.attachTimeout` | number | `30` | Seconds to wait for a debugger to attach; the app is killed after that. |
 | `spring.dashboard.stop.gracePeriod` | number | `10` | Seconds between Stop (SIGTERM) and the kill (SIGKILL). |
 | `spring.dashboard.launch.prompt` | string | `first` | When the launch panel opens: `first` (first time per app), `always` or `never`. |
-| `spring.dashboard.launch.focusOutput` | boolean | `false` | Switch to the output tab of an app when it is started. |
+| `spring.dashboard.launch.focusOutput` | boolean | `false` | Switch to the dashboard tab of an app when it is started. |
 | `spring.dashboard.apps` | object | `{}` | Default launch settings per app name (`profiles`, `port`, `logLevel`, `logPackages`, `debugReport`, `vmArgs`, `args`, `env`), e.g. `{ "my-app": { "vmArgs": "-Xmx512m" } }`. |
 
 Remote apps are listed in `boot-java.remote-apps`, a coc-springboot

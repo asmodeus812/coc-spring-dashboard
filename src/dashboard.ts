@@ -2,6 +2,7 @@ import * as coc from "coc.nvim";
 import { AppsView, BootApp } from "./apps";
 import { AppState } from "./launch";
 import { LiveApp, LiveData } from "./live";
+import { releaseView } from "./output";
 import { StsApi } from "./sts";
 import { Symbols } from "./symbols";
 
@@ -14,18 +15,70 @@ export interface Dashboard {
     live: LiveData;
     symbols: Symbols;
     apps: AppsView;
+    /** The app whose tab is current, the empty views name it in their hint. */
+    appTab: AppTab;
     views: Map<string, coc.TreeView<any>>;
     /** Finds the element of a key in a view, used to reveal the bean or endpoint under the cursor. */
     finders: Map<string, (key: string) => unknown>;
 }
 
 /**
- * Creates a tree view and its `<id>.focus` command, which opens the view.
+ * The app of the app tab that is current, none in any other tab.
  */
-export function registerView<T>(d: Dashboard, id: string, title: string, provider: coc.TreeDataProvider<T>, enableFilter: boolean = false): coc.TreeView<T> {
-    const view = coc.window.createTreeView<T>(title, { treeDataProvider: provider, bufhidden: "hide", enableFilter });
+export class AppTab {
+    public name: string | undefined;
+    private readonly emitter = new coc.Emitter<void>();
+    public readonly onDidChange: coc.Event<void> = this.emitter.event;
+
+    public set(name: string | undefined): void {
+        if (name !== this.name) {
+            this.name = name;
+            this.emitter.fire();
+        }
+    }
+}
+
+/**
+ * The one row of a view that has nothing to show, it says what to do.
+ */
+export interface HintNode {
+    kind: "hint";
+    key: string;
+    label: string;
+}
+
+/**
+ * The hint of a view with no data, `what` is the plural of what it lists. Live views name the app of the current tab.
+ */
+export function hintOf(d: Dashboard, what: string, live: boolean): HintNode {
+    const app: string | undefined = d.appTab.name;
+    let label: string;
+    if (!live) {
+        label = `No ${what} yet`;
+    } else if (app === undefined) {
+        label = `Run an app to see its ${what}`;
+    } else if (d.apps.apps.some(a => a.name === app && d.apps.stateOf(a) !== "stopped")) {
+        label = `${app} is not connected yet`;
+    } else {
+        label = `Run ${app} to see its ${what}`;
+    }
+    return { kind: "hint", key: "hint", label };
+}
+
+export function hintItem(hint: HintNode): coc.TreeItem {
+    const item = new coc.TreeItem(hint.label, coc.TreeItemCollapsibleState.None);
+    item.id = hint.key;
+    item.icon = { text: "·", hlGroup: "Comment" };
+    return item;
+}
+
+/**
+ * Creates a tree view and its `<id>.focus` command, which opens the view and is listed only when `listed` is set.
+ */
+export function registerView<T>(d: Dashboard, id: string, title: string, provider: coc.TreeDataProvider<T>, { filter = false, listed = false }: { filter?: boolean; listed?: boolean } = {}): coc.TreeView<T> {
+    const view = coc.window.createTreeView<T>(title, { treeDataProvider: provider, bufhidden: "hide", enableFilter: filter });
     d.views.set(id, view);
-    d.context.subscriptions.push(view, coc.commands.registerCommand(`${id}.focus`, () => focusView(view)));
+    d.context.subscriptions.push(view, coc.commands.registerCommand(`${id}.focus`, () => focusView(view), undefined, !listed));
     return view;
 }
 
@@ -51,7 +104,12 @@ export function stateIcon(state: boolean | AppState): coc.TreeItemIcon {
     return icon;
 }
 
+/**
+ * Opens a view. A tree view lives in one window only, one that sits in an app tab is moved into the current tab, which
+ * is not an app tab.
+ */
 export async function focusView(view: coc.TreeView<any>): Promise<void> {
+    await releaseView(view);
     if (!view.visible) {
         await view.show(TREE_SPLIT);
     }

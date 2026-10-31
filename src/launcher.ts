@@ -32,9 +32,8 @@ export class TerminalLauncher implements AppLauncher {
     public readonly onDidChangeState: coc.Event<void> = this.emitter.event;
 
     private readonly panel: LaunchPanel;
-    private readonly output: OutputTabs = new OutputTabs();
 
-    constructor(private readonly context: coc.ExtensionContext) {
+    constructor(private readonly context: coc.ExtensionContext, private readonly output: OutputTabs) {
         this.panel = new LaunchPanel(context);
         context.subscriptions.push(coc.window.onDidCloseTerminal(t => this.closed(t)), this.emitter);
     }
@@ -59,17 +58,32 @@ export class TerminalLauncher implements AppLauncher {
         return message;
     }
 
-    public hasOutput(app: LaunchTarget): Promise<boolean> {
-        return this.output.has(app.mainClass);
+    // the tab, or the terminal of the last run when the tab was closed
+    public async hasOutput(app: LaunchTarget): Promise<boolean> {
+        return (await this.output.has(app.mainClass)) || await this.terminalOf(app) !== undefined;
     }
 
+    private async terminalOf(app: LaunchTarget): Promise<number | undefined> {
+        const bufnr: number | undefined = this.sessions.get(app.mainClass)?.terminal?.bufnr;
+        const loaded: boolean = bufnr !== undefined && (await coc.workspace.nvim.call("bufloaded", [bufnr])) as number === 1;
+        return loaded ? bufnr : undefined;
+    }
+
+    /**
+     * Switches to the tab of the app, the tab is built again from the terminal of the last run when it was closed.
+     */
     public async showOutput(app: LaunchTarget): Promise<string> {
-        const shown: boolean = await this.output.focus(app.mainClass);
+        let shown: boolean = await this.output.focus(app.mainClass);
+        const bufnr: number | undefined = shown ? undefined : await this.terminalOf(app);
+        if (bufnr !== undefined) {
+            await this.output.show({ key: app.mainClass, name: app.name, folder: app.path }, bufnr, { focus: true });
+            shown = true;
+        }
         let message: string;
         if (shown) {
-            message = `Output of ${app.name}`;
+            message = `Dashboard of ${app.name}`;
         } else {
-            message = `${app.name} has no output yet`;
+            message = `${app.name} has not run yet`;
             coc.window.showWarningMessage(message);
         }
         return message;
@@ -172,7 +186,7 @@ export class TerminalLauncher implements AppLauncher {
         session.jdwpPort = jdwpPort;
         session.pid = await terminal.processId;
         void connectLive(session);
-        await this.output.show(app.mainClass, app.path, terminal.bufnr, config<boolean>("launch.focusOutput", false));
+        await this.output.show({ key: app.mainClass, name: app.name, folder: app.path }, terminal.bufnr, { focus: config<boolean>("launch.focusOutput", false) });
 
         let message: string;
         if (debug && session.backend) {

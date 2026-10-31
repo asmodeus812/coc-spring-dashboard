@@ -34,13 +34,13 @@ coc-spring-dashboard defines no key mappings. You use it through
 ==============================================================================
 QUICKSTART                                   *coc-spring-dashboard-quickstart*
 
-Open the apps tree and the beans tree: >vim
+Open the apps tree and start an app from it: >vim
     :CocCommand spring.apps.focus
-    :CocCommand spring.beans.focus
 <
-Every tree opens in a vertical split on the right. Press `<CR>` on a bean to
-go to its definition, and the actions key of the tree (`<Tab>` by default)
-for the other actions. |coc-spring-dashboard-actions|
+The tree opens in a vertical split on the right. Pick an app and Run it, then
+open its dashboard with the actions key of the tree (`<Tab>` by default).
+|coc-spring-dashboard-actions| All commands are listed in
+|coc-spring-dashboard-commands|.
 
 ==============================================================================
 LIVE AND STATIC DATA                               *coc-spring-dashboard-live*
@@ -66,24 +66,63 @@ The description after a group says which data it shows:
   `live, defined`    live data, only what is defined in the source
   `defined`          static data from the source
 
-Refresh the data by hand: >vim
+Refresh the live data of the connected apps by hand: >vim
     :CocCommand spring.dashboard.livedata.refresh
-    :CocCommand spring.staticData.refresh
 <
-The first reloads the live data of the running apps, the second rescans the
-source for beans and mappings.
+The static data rescans the source by itself when you save and when the
+index changes.
 
 ==============================================================================
 VIEWS                                             *coc-spring-dashboard-views*
 
-Each view has a command that opens it, or moves to it when it is open.
+SPRING APPS is opened with `spring.apps.focus`. The Beans, Mappings,
+Properties and Memory views are part of the dashboard of an app and are
+reached with the find commands. |coc-spring-dashboard-commands|
 
-  View                       Command ~
-  SPRING APPS                `spring.apps.focus`
-  SPRING BEANS               `spring.beans.focus`
-  SPRING ENDPOINT MAPPINGS   `spring.mappings.focus`
-  SPRING PROPERTIES          `spring.properties.focus`
-  SPRING MEMORY              `spring.memoryView.focus`
+==============================================================================
+COMMANDS                                       *coc-spring-dashboard-commands*
+
+Every command that `:CocCommand` lists, by what you do. The other commands of
+the extension are actions of the trees and are described under
+|coc-spring-dashboard-actions|.
+
+Start from SPRING APPS ~
+  `spring.apps.focus`                          open the list of apps
+  `spring-boot-dashboard.refresh`              look for the apps of the
+                                               workspace again
+  `spring-boot-dashboard.localapp.run`         run a stopped app
+  `spring-boot-dashboard.localapp.debug`       run a stopped app with the
+                                               debugger attached
+  `spring-boot-dashboard.localapp.settings`    set profiles, port, logging,
+                                               JVM options, args and
+                                               environment of an app
+  `spring-boot-dashboard.localapp.attach`      attach the debugger to a
+                                               running app
+  `spring-boot-dashboard.localapp.stop`        stop a running app
+  `spring-boot-dashboard.localapp.open`        open a running app in the
+                                               browser
+  `spring-boot-dashboard.localapp.run-multiple`   run several apps at once
+  `spring-boot-dashboard.localapp.stop-multiple`  stop several apps at once
+
+The app dashboard ~
+  `spring-boot-dashboard.localapp.dashboard`   show the dashboard tab of an
+                                               app that has run
+  `spring.dashboard.livedata.refresh`          reload the live data of the
+                                               connected apps
+  `spring.dashboard.showUnderCursor`           show the bean or endpoint
+                                               under the cursor in its view
+
+Find ~
+  `spring.beans.find`                          find a bean
+  `spring.mappings.find`                       find an endpoint
+  `spring.properties.find`                     find a property of a running
+                                               app
+
+Remote apps ~
+  `spring.remoteApp.connect`                   connect a remote app
+  `spring.remoteApp.disconnect`                disconnect a remote app
+
+Without a tree line the app commands ask which app to use.
 
 ------------------------------------------------------------------------------
 APPS                                               *coc-spring-dashboard-apps*
@@ -143,11 +182,34 @@ already open (also with `never`); a profile given as argument skips it.
 The app starts as a JVM named "Spring: <app>", with the JMX arguments the
 live data needs added for you. The classpath comes from the Java language
 server and is passed in an argument file in the storage folder of the
-extension. The output, colors and input are in an output tab per app, created
-at the end of the tab line, with the working directory set to the project
-(`:tcd`). Running again reuses the tab. The focus stays where it was, unless
-`spring.dashboard.launch.focusOutput` is on; "Show output" in the tree
-actions and `spring-boot-dashboard.localapp.output` switch to the tab.
+extension. Each app gets a tab at the end of the tab line, its dashboard, with
+the working directory set to the project (`:tcd`):
+>
+    +-----------+-----------+------------+----------+
+    | BEANS     | MAPPINGS  | PROPERTIES | MEMORY   |   upper half,
+    |           |           |            |          |   4 equal columns
+    +-----------+-----------+------------+----------+
+    | terminal: the JVM of this run, with the output |   lower half
+    +------------------------------------------------+
+<
+The terminal has the output, colors and input. Running again reuses the tab:
+the new terminal replaces the old one, the views stay. The focus stays where
+it was, unless `spring.dashboard.launch.focusOutput` is on. "Show app
+dashboard" in the tree actions and `spring-boot-dashboard.localapp.dashboard`
+switch to the tab, build it again from the terminal of the last run when it
+was closed, and restore the layout: a pane you closed comes back and the sizes
+are reset. Entering the tab restores a missing pane too. When the app stops
+the tab stays, the terminal shows the exit.
+
+A coc tree view lives in one window at a time, so the four views are shown in
+the app tab you are in: they move there when you enter it, and the other app
+tabs keep the terminal only until they are entered. The views show every live
+app, as they do elsewhere. A view with nothing to show has one hint row, for
+example "Run <app> to see its properties" or "No beans yet". SPRING APPS stays
+its own view on the right of the tab you are in, to start apps from; browsing
+the views never opens an app tab. Opening a view with a find command in a
+tab that is not an app tab moves it out of the app tab.
+
 Debug starts the JVM suspended, so that breakpoints in the startup code are
 hit, and attaches the debugger. Debugging needs nvim-dap (Neovim) or
 vimspector (Vim and Neovim, Python 3); without them Debug says so, Run still
@@ -175,19 +237,17 @@ Attach debugger, on an app started with Run, attaches the debugger later;
 breakpoints hit from then on. The commands:
 
   `spring-boot-dashboard.localapp.run`
-  `spring-boot-dashboard.localapp.runWithProfile`
   `spring-boot-dashboard.localapp.debug`
-  `spring-boot-dashboard.localapp.debugWithProfile`
   `spring-boot-dashboard.localapp.settings`
-  `spring-boot-dashboard.localapp.output`
+  `spring-boot-dashboard.localapp.dashboard`
   `spring-boot-dashboard.localapp.attach`
   `spring-boot-dashboard.localapp.stop`
   `spring-boot-dashboard.localapp.run-multiple`
-  `spring-boot-dashboard.localapp.debug-multiple`
   `spring-boot-dashboard.localapp.stop-multiple`
 
 Without a tree line they ask which app to use; the `-multiple` commands let
-you pick several apps, stopped ones for run and debug, running ones for stop.
+you pick several apps, stopped ones for run, running ones for stop. Debug with
+several apps is the Debug action of each app.
 
 `spring-boot-dashboard.localapp.open` opens a running app in the browser.
 |coc-spring-dashboard-browser|
@@ -255,7 +315,7 @@ menu of what you can do with it:
 
   Line             Actions ~
   app              Run, Run with profile, Debug, Debug with profile,
-                   Launch settings..., Show output, Stop, Attach debugger
+                   Launch settings..., Show app dashboard, Stop, Attach debugger
                    (started with Run), Open in browser (running apps only)
   bean             Go to definition (beans with source), Show
                    dependencies, Show injected into, Show hierarchy
@@ -413,6 +473,13 @@ MESSAGES                                       *coc-spring-dashboard-messages*
 
 "No connected app to refresh, run an app or connect a remote one"
     `spring.dashboard.livedata.refresh` has no connected app to refresh.
+
+"No app has a dashboard yet, run one first"
+    Show app dashboard needs an app that has run; run one first.
+
+"Spring Boot Dashboard: found ... apps", "... refreshed the live data of ... apps"
+    The two refresh commands say what they did when no dashboard view is on
+    screen to show it.
 
 "Spring Boot Dashboard: could not ..."
     The apps could not be resolved, the beans and endpoints could not be

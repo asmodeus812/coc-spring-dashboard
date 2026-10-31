@@ -1,5 +1,5 @@
 import * as coc from "coc.nvim";
-import { Dashboard, registerView } from "../dashboard";
+import { Dashboard, HintNode, hintItem, hintOf, registerView } from "../dashboard";
 import { LiveProcess } from "../sts";
 import { config, failed } from "../util";
 
@@ -28,6 +28,8 @@ interface MemoryNode {
     series?: Series;
 }
 
+type MemoryElement = MemoryNode | HintNode;
+
 const MB: number = 1024 * 1024;
 
 /**
@@ -43,13 +45,14 @@ function usedOf(metrics: any[]): { used: number; max?: number } {
  * The memory view: per connected process the heap, the non heap and the gc pauses as sparklines with the current
  * numbers, fed by the memory and gc pause updates of coc-springboot and polled every fetch delay.
  */
-export class MemoryView implements coc.TreeDataProvider<MemoryNode>, coc.Disposable {
+export class MemoryView implements coc.TreeDataProvider<MemoryElement>, coc.Disposable {
     private readonly data: Map<string, { name: string; heap: Series; nonHeap: Series; gc: Series }> = new Map();
-    private readonly emitter = new coc.Emitter<MemoryNode | undefined>();
-    public readonly onDidChangeTreeData: coc.Event<MemoryNode | undefined> = this.emitter.event;
+    private readonly emitter = new coc.Emitter<MemoryElement | undefined>();
+    public readonly onDidChangeTreeData: coc.Event<MemoryElement | undefined> = this.emitter.event;
     private readonly timer: NodeJS.Timeout;
 
     constructor(private readonly d: Dashboard) {
+        d.appTab.onDidChange(() => this.emitter.fire(undefined));
         d.context.subscriptions.push(
             d.api.onDidLiveProcessMemoryMetricsUpdate(p => this.memory(p)),
             d.api.onDidLiveProcessGcPausesMetricsUpdate(p => this.gcPauses(p)),
@@ -67,18 +70,22 @@ export class MemoryView implements coc.TreeDataProvider<MemoryNode>, coc.Disposa
         }
     }
 
-    public getChildren(element?: MemoryNode): MemoryNode[] {
+    public getChildren(element?: MemoryElement): MemoryElement[] {
         // an app that disconnected while the tree is drawn has no entry any more, it renders nothing like an app without data
         const series = (key: string): MemoryNode[] => {
             const d = this.data.get(key);
             return d === undefined ? [] : [d.heap, d.nonHeap, d.gc].map(s => ({ kind: "series" as const, key: `${key}/${s.label}`, processKey: key, series: s }));
         };
+        const apps: MemoryNode[] = [...this.data.keys()].map(k => ({ kind: "app", key: k, processKey: k }));
         return element === undefined
-            ? [...this.data.keys()].map(k => ({ kind: "app", key: k, processKey: k }))
+            ? (apps.length > 0 ? apps : [hintOf(this.d, "memory", true)])
             : (element.kind === "app" ? series(element.processKey) : []);
     }
 
-    public getTreeItem(node: MemoryNode): coc.TreeItem {
+    public getTreeItem(node: MemoryElement): coc.TreeItem {
+        if (node.kind === "hint") {
+            return hintItem(node);
+        }
         const s: Series | undefined = node.series;
         const current: string = s && s.values.length > 0 ? `${s.values[s.values.length - 1].toFixed(1)} ${s.unit}` : "-";
         const label: string = s ? `${s.label.padEnd(9)} ${sparkline(s.values.length > 0 ? s.values : [0])} ${current}${s.extra ? ` ${s.extra}` : ""}` : this.data.get(node.processKey)?.name ?? node.processKey;
