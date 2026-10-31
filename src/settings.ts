@@ -245,3 +245,120 @@ export class LaunchPanel {
         return result;
     }
 }
+
+/**
+ * Where to attach: a host with the JMX port of the live data and the JDWP port of the debugger. An empty port skips that half.
+ */
+export interface AttachSettings {
+    host: string;
+    jmxPort: string;
+    debugPort: string;
+    project: string;
+}
+
+const ATTACH_DEFAULTS: AttachSettings = { host: "localhost", jmxPort: "9010", debugPort: "5005", project: "" };
+const ATTACH_KEY: string = "attach.settings";
+
+/**
+ * The JVM options an app needs to be attached to with these settings, one per line. A half with an empty port is left out.
+ */
+export function startOptions(s: AttachSettings): string[] {
+    const options: string[] = [];
+    if (s.debugPort !== "") {
+        options.push(`-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:${s.debugPort}`);
+    }
+    if (s.jmxPort !== "") {
+        const host: string = s.host === "localhost" ? "127.0.0.1" : s.host;
+        options.push(
+            `-Dcom.sun.management.jmxremote.port=${s.jmxPort}`,
+            `-Dcom.sun.management.jmxremote.rmi.port=${s.jmxPort}`,
+            "-Dcom.sun.management.jmxremote.authenticate=false",
+            "-Dcom.sun.management.jmxremote.ssl=false",
+            `-Djava.rmi.server.hostname=${host}`,
+            "-Dspring.jmx.enabled=true",
+            "-Dmanagement.endpoints.jmx.exposure.include=*",
+        );
+    }
+    return options;
+}
+
+/**
+ * The attach panel, in the style of the launch panel: the action first and the settings below it, remembered in the
+ * workspace state.
+ */
+export class AttachPanel {
+    constructor(private readonly context: coc.ExtensionContext) { }
+
+    public saved(): AttachSettings {
+        return { ...ATTACH_DEFAULTS, ...this.context.workspaceState.get<Partial<AttachSettings>>(ATTACH_KEY) };
+    }
+
+    public async remember(settings: AttachSettings): Promise<void> {
+        await this.context.workspaceState.update(ATTACH_KEY, settings);
+    }
+
+    /**
+     * Shows the panel until the action is picked, which saves and returns the settings. Undefined on Esc. The only
+     * project is filled in when none was picked yet.
+     */
+    public async open(projects: string[]): Promise<AttachSettings | undefined> {
+        let settings: AttachSettings = this.saved();
+        if (settings.project === "" && projects.length === 1) {
+            settings = { ...settings, project: projects[0] };
+        }
+        let result: AttachSettings | undefined = undefined;
+        let done: boolean = false;
+        while (!done) {
+            const picked = await coc.window.showQuickPick([{ label: "▶ Attach with these settings", key: "go" }, ...this.rows(settings)], { title: "Attach to an app" });
+            if (picked === undefined) {
+                done = true;
+            } else if (picked.key === "go") {
+                await this.remember(settings);
+                result = settings;
+                done = true;
+            } else if (picked.key === "copy") {
+                await this.copy(settings);
+            } else {
+                settings = await this.edit(settings, picked.key, projects);
+            }
+        }
+        return result;
+    }
+
+    private rows(s: AttachSettings): Row[] {
+        const row = (name: string, value: string, key: string, hint: string = ""): Row => ({ label: `  ${name.padEnd(15)}${value}${hint ? `  (${hint})` : ""}`, key });
+        return [
+            row("Host", s.host, "host"),
+            row("JMX port", s.jmxPort || "none", "jmxPort", "live data; empty: skip"),
+            row("Debug port", s.debugPort || "none", "debugPort", "debugger; empty: skip"),
+            row("Project", s.project || "none", "project"),
+            row("Copy the start options", "", "copy"),
+        ];
+    }
+
+    private async copy(s: AttachSettings): Promise<void> {
+        const text: string = startOptions(s).join("\n");
+        // the system clipboard may be missing, the unnamed register always works
+        for (const register of ["+", "\""]) {
+            await coc.workspace.nvim.call("setreg", [register, text]).catch(() => undefined);
+        }
+        coc.window.showInformationMessage("Start options copied");
+    }
+
+    private async edit(s: AttachSettings, key: string, projects: string[]): Promise<AttachSettings> {
+        let result: AttachSettings = s;
+        if (key === "project" && projects.length > 0) {
+            const picked = await coc.window.showQuickPick(projects.map(p => ({ label: p })), { title: "Project to attach" });
+            result = picked === undefined ? s : { ...s, project: picked.label };
+        } else {
+            const label: string = { host: "Host", jmxPort: "JMX port (empty: skip)", debugPort: "Debug port (empty: skip)", project: "Project" }[key] ?? key;
+            const current: string = s[key as keyof AttachSettings];
+            const input: string | undefined = await coc.window.requestInput(label, current);
+            const value: string = (input ?? current).trim();
+            // a port is a number or empty, anything else keeps the value
+            const valid: boolean = key.endsWith("Port") ? /^\d*$/.test(value) : (key !== "host" || value !== "");
+            result = valid ? { ...s, [key]: value } : s;
+        }
+        return result;
+    }
+}

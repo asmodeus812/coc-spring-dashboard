@@ -8,6 +8,8 @@ export interface AttachTarget {
     name: string;
     projectName: string;
     adapterPort: number;
+    /** The host of the JVM. */
+    host: string;
     jdwpPort: number;
 }
 
@@ -39,7 +41,7 @@ class NvimDapBackend implements DebugBackend {
             `local adapter, target = ...
             local dap = require('dap')
             dap.adapters[adapter] = { type = 'server', host = '127.0.0.1', port = target.adapterPort }
-            dap.run({ type = adapter, request = 'attach', name = adapter, hostName = '127.0.0.1', port = target.jdwpPort, projectName = target.projectName })`,
+            dap.run({ type = adapter, request = 'attach', name = adapter, hostName = target.host, port = target.jdwpPort, projectName = target.projectName })`,
             [adapter, target as any],
         );
         const started: number = Date.now();
@@ -89,7 +91,7 @@ class VimspectorBackend implements DebugBackend {
         await nvim.call("vimspector#LaunchWithConfigurations", [{
             [name]: {
                 adapter: { host: "127.0.0.1", port: target.adapterPort },
-                configuration: { request: "attach", name, hostName: "127.0.0.1", port: target.jdwpPort, projectName: target.projectName },
+                configuration: { request: "attach", name, hostName: target.host, port: target.jdwpPort, projectName: target.projectName },
             },
         }]);
         this.ended.set(target.jdwpPort, before);

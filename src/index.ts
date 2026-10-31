@@ -34,7 +34,6 @@ async function start(context: coc.ExtensionContext): Promise<void> {
         const symbols = new Symbols(api);
         const tabs = new OutputTabs();
         const launcher = new TerminalLauncher(context, tabs);
-        launcher.connected = pid => live.byPid(pid) !== undefined;
         const d: Dashboard = { context, api, live, symbols, apps: new AppsView(live, launcher), appTab: new AppTab(), views: new Map(), finders: new Map() };
         context.subscriptions.push(live, symbols);
         registerApps(d);

@@ -1,6 +1,6 @@
 {
     "name": "coc-spring-dashboard",
-    "version": "0.3.1",
+    "version": "0.4.0",
     "description": "Spring Boot dashboard for coc.nvim",
     "author": "Svetlozar Iliev <svetlozar321@gmail.com>",
     "license": "MIT",
@@ -169,6 +169,11 @@
             {
                 "command": "spring-boot-dashboard.localapp.attach",
                 "title": "Attach the debugger to a running app",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring-boot-dashboard.attach",
+                "title": "Attach to an app",
                 "category": "Spring Boot Dashboard"
             },
             {

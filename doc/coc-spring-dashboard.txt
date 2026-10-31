@@ -61,10 +61,11 @@ registered and asks no server for that. An action that needs a server which
 is not up says "Java server starting" or "Spring Boot server not running" and
 does nothing else; Run does not wait for the Spring Boot server. Work in the
 background waits for the server instead of polling it: the live data of a
-started app is connected once the Spring Boot server is up, asking with a
-growing delay for 3 minutes at most (a line in the output channel when it
-gives up), and the beans and mappings of the workspace are loaded once it is
-up and tried again while they come back empty.
+started app is connected once the Spring Boot server is up, by sending it
+the pid of the app (as for the remote apps, so it does not depend on
+`boot-java.live-information.all-local-java-processes`), and the beans and
+mappings of the workspace are loaded once it is up and tried again while they
+come back empty.
 
 Icons of an app or of the group of an app in a tree:
 
@@ -111,6 +112,9 @@ Start from SPRING APPS ~
                                                environment of an app
   `spring-boot-dashboard.localapp.attach`      attach the debugger to a
                                                running app
+  `spring-boot-dashboard.attach`               attach to an app that was
+                                               not started here
+                                               |coc-spring-dashboard-attach|
   `spring-boot-dashboard.localapp.stop`        stop a running app
   `spring-boot-dashboard.localapp.open`        open a running app in the
                                                browser
@@ -414,7 +418,56 @@ A remote app is an app on another host that you reach over JMX. List them in
                                   disconnect it
 
 The pick lists each app as `host (jmxurl)`. A connected remote app shows
-live data in the trees like a local running app.
+live data in the trees like a local running app. Connect sends the app with
+`manualConnect` false, so that the Spring Boot server connects it. To
+connect and debug an app in one step, see |coc-spring-dashboard-attach|.
+
+==============================================================================
+ATTACH TO AN APP                                  *coc-spring-dashboard-attach*
+
+`spring-boot-dashboard.attach` is for an app that the dashboard did not
+start: on another machine, in a container, behind a forwarded port, or a
+local JVM. It connects the live data over JMX and attaches the debugger over
+JDWP, then opens the app dashboard tab with the four views. There is no
+terminal in that tab. A panel asks what to attach to: >
+     Attach to an app
+     ▶ Attach with these settings
+       Host            localhost
+       JMX port        9010  (live data; empty: skip)
+       Debug port      5005  (debugger; empty: skip)
+       Project         orders-service
+       Copy the start options
+<
+A row opens a one-line input, Project a pick of the Java projects of the
+workspace, and returns to the panel. Picking the first line attaches, Esc
+cancels. With one Java project the Project row is filled with it. The values
+are remembered in the workspace. An empty port skips that half.
+
+Copy the start options puts the JVM options that match the panel on the
+clipboard (register `+`) and the unnamed register, one per line, and says
+"Start options copied". Start the app with them. The half whose port is empty
+is left out: >
+    -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
+    -Dcom.sun.management.jmxremote.port=9010
+    -Dcom.sun.management.jmxremote.rmi.port=9010
+    -Dcom.sun.management.jmxremote.authenticate=false
+    -Dcom.sun.management.jmxremote.ssl=false
+    -Djava.rmi.server.hostname=127.0.0.1
+    -Dspring.jmx.enabled=true
+    -Dmanagement.endpoints.jmx.exposure.include=*
+<
+The live half needs the Spring Boot server, the debug half a debugger
+(nvim-dap or vimspector) and the Java server. A missing one is named and the
+other half still runs. A half that fails does not undo the other. The
+disconnect is `spring.remoteApp.disconnect`.
+
+The command takes optional arguments, which skip the panel: host, JMX port,
+debug port and project. A missing one is the remembered value, an empty
+string skips that half: >
+    :CocCommand spring-boot-dashboard.attach localhost 9010 5005 orders
+<
+`spring-boot-dashboard.localapp.attach` stays as it is: it attaches the
+debugger to an app that Run started.
 
 ==============================================================================
 OPEN IN BROWSER                                 *coc-spring-dashboard-browser*
@@ -480,6 +533,13 @@ MESSAGES                                       *coc-spring-dashboard-messages*
 
 "No connected app"
     `spring.dashboard.livedata.refresh` has no connected app to refresh.
+
+"... live data connecting", "... debugger attached"
+    The two halves of Attach to an app, each says how it went.
+
+"Nothing on host:port", "No port to attach", "No project to attach"
+    Attach to an app found nothing listening on the debug port, both ports
+    are empty, or no project was picked. |coc-spring-dashboard-attach|
 
 "Started ...", "Stopping ...", "Found ... apps", "Refreshed ... apps",
 "Connecting ...", "Disconnected ..."

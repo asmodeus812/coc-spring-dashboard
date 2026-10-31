@@ -1,7 +1,8 @@
 import * as coc from "coc.nvim";
 import * as fs from "fs";
+import * as path from "path";
 import { Dashboard, TREE_SPLIT, registerView, stateIcon } from "./dashboard";
-import { AppLauncher, AppState, LaunchTarget } from "./launch";
+import { AppLauncher, AppState, AttachProject, LaunchTarget } from "./launch";
 import { LiveApp, LiveData } from "./live";
 import { need, ready, waitFor } from "./ready";
 import { command, config, failed, formatUrl, javaCommand, openUrl, projectRoot } from "./util";
@@ -205,6 +206,25 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
         return app ? this.launcher.attach(app) : undefined;
     }
 
+    /**
+     * The attach command: the panel, or the options (host, JMX port, debug port, project) to skip it. The projects to pick
+     * from are the Java projects of the workspace.
+     */
+    public async attachApp(host?: string, jmxPort?: string, debugPort?: string, project?: string): Promise<string | undefined> {
+        const projects: AttachProject[] = this.apps.map(a => ({ name: a.projectName, path: a.path }));
+        if (ready("java")) {
+            const uris: string[] = ((await javaCommand<string[]>("java.project.getAll").catch(() => [])) ?? []);
+            for (const uri of uris) {
+                const folder: string = coc.Uri.parse(uri).fsPath;
+                const name: string = path.basename(folder);
+                if (!projects.some(p => p.name === name)) {
+                    projects.push({ name, path: folder });
+                }
+            }
+        }
+        return this.launcher.attachRemote({ host, jmxPort, debugPort, project }, projects);
+    }
+
     public async stop(arg?: BootApp | string): Promise<string | undefined> {
         const app = await this.resolve(arg, "running");
         return app ? this.stopApp(app) : undefined;
@@ -296,6 +316,7 @@ export function registerApps(d: Dashboard): AppsView {
         coc.commands.registerCommand(id("localapp.dashboard"), (arg?: BootApp | string) => provider.output(arg)),
         coc.commands.registerCommand(id("localapp.output"), (arg?: BootApp | string) => provider.output(arg), undefined, true),
         coc.commands.registerCommand(id("localapp.attach"), (arg?: BootApp | string) => provider.attach(arg)),
+        coc.commands.registerCommand(id("attach"), (host?: string, jmxPort?: string, debugPort?: string, project?: string) => provider.attachApp(host, jmxPort, debugPort, project)),
         coc.commands.registerCommand(id("localapp.stop"), (arg?: BootApp | string) => provider.stop(arg)),
         coc.commands.registerCommand(id("localapp.open"), (arg?: BootApp | string) => provider.open(arg)),
         coc.commands.registerCommand("spring.dashboard.livedata.refresh", () => need("spring") ? d.live.refresh(true) : undefined),

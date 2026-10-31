@@ -9,11 +9,14 @@ function vimString(value: string): string {
 
 /**
  * The tab variables of an app tab: the key of its app, its name, the buffer of its terminal and the window it was started from.
+ * An attached app tab has no terminal: it is marked and has a spare window to build the views around.
  */
 const TAB_KEY: string = "spring_output";
 const TAB_NAME: string = "spring_name";
 const TAB_TERMINAL: string = "spring_terminal";
 const TAB_ORIGIN: string = "spring_origin";
+const TAB_ATTACHED: string = "spring_attached";
+const TAB_ANCHOR: string = "spring_anchor";
 
 /**
  * A variable of a tab, the current tab when `tab` is 0.
@@ -116,15 +119,52 @@ export class OutputTabs {
         }
     }
 
-    // the terminal buffer in the app's tab: a new tab at the end, or the one of the previous run
-    private async place(tab: TabApp, bufnr: number, found: number, origin: number): Promise<void> {
+    /**
+     * Shows the tab of an app that was not started here: the four views fill it, there is no terminal. A tab that exists is
+     * reused. The focus returns to the tab it was in unless `focus` is set.
+     */
+    public async showViews(tab: TabApp, { focus, origin = 0 }: { focus: boolean; origin?: number }): Promise<void> {
         const nvim = coc.workspace.nvim;
+        const previous: number = (await nvim.call("tabpagenr")) as number;
+        const found: number = await this.find(tab.key);
+        try {
+            await this.enterAppTab(tab, found);
+            if (found === 0) {
+                await setTabVar(TAB_ATTACHED, 1);
+                await setTabVar(TAB_ANCHOR, (await nvim.call("win_getid")) as number);
+                await nvim.command(`silent! execute 'tcd ' . fnameescape(${vimString(tab.folder)})`);
+            }
+            await this.setOrigin(origin);
+            await this.layout(true);
+        } finally {
+            if (!focus) {
+                await nvim.command(`tabnext ${previous}`);
+            }
+        }
+    }
+
+    // the tab of an app: a new one at the end with its key and name, or the one that exists
+    private async enterAppTab(tab: TabApp, found: number): Promise<void> {
         if (found === 0) {
-            await nvim.command("$tabnew");
+            await coc.workspace.nvim.command("$tabnew");
             await setTabVar(TAB_KEY, tab.key);
             await setTabVar(TAB_NAME, tab.name);
         } else {
-            await nvim.command(`tabnext ${found}`);
+            await coc.workspace.nvim.command(`tabnext ${found}`);
+        }
+    }
+
+    private async setOrigin(origin: number): Promise<void> {
+        if (origin > 0) {
+            await setTabVar(TAB_ORIGIN, origin);
+        }
+    }
+
+    // the terminal buffer in the app's tab: a new tab at the end, or the one of the previous run
+    private async place(tab: TabApp, bufnr: number, found: number, origin: number): Promise<void> {
+        const nvim = coc.workspace.nvim;
+        await this.enterAppTab(tab, found);
+        if (found > 0) {
             // the window of the terminal, the one that was current may be a view; a closed one is made again
             const win: number = await this.terminalWindow();
             if (win > 0) {
@@ -133,9 +173,7 @@ export class OutputTabs {
                 await nvim.command("botright new");
             }
         }
-        if (origin > 0) {
-            await setTabVar(TAB_ORIGIN, origin);
-        }
+        await this.setOrigin(origin);
         const old: number = (await nvim.call("bufnr", ["%"])) as number;
         const previous: number = await tabVar(TAB_TERMINAL, 0);
         await nvim.command(`silent! buffer ${bufnr}`);
@@ -205,6 +243,18 @@ export class OutputTabs {
         return found;
     }
 
+    // the spare window of an attached tab: the one it was made with, a new one when that is gone
+    private async spareWindow(tab: number): Promise<number> {
+        const nvim = coc.workspace.nvim;
+        let win: number = await tabVar(TAB_ANCHOR, 0);
+        if (win === 0 || await tabOf(win) !== tab) {
+            await nvim.command("botright new");
+            win = (await nvim.call("win_getid")) as number;
+            await setTabVar(TAB_ANCHOR, win);
+        }
+        return win;
+    }
+
     private layout(reset: boolean): Promise<void> {
         this.queue = this.queue.then(() => this.build(reset)).catch(() => undefined);
         return this.queue;
@@ -221,12 +271,20 @@ export class OutputTabs {
         const tab: number = (await nvim.call("tabpagenr")) as number;
         const views: coc.TreeView<any>[] = this.views();
         const terminal: number = name === "" ? 0 : await this.terminalWindow();
+        // a tab of an attached app has no terminal, the views fill it
+        const attached: boolean = name !== "" && (await tabVar(TAB_ATTACHED, 0)) === 1;
         const before: number = (await nvim.call("win_getid")) as number;
         this.onApp(name === "" ? undefined : name);
-        if (terminal > 0 && views.length > 0) {
+        if ((terminal > 0 || attached) && views.length > 0) {
             const complete: boolean = await this.viewsComplete(views, tab);
+            let spare: number = terminal;
             if (!complete) {
-                await this.rebuildViews(views, terminal);
+                // an attached tab builds around a spare window, it goes when the views are in
+                spare = attached ? await this.spareWindow(tab) : terminal;
+                await this.rebuildViews(views, spare, attached ? "aboveleft vs" : "aboveleft split");
+                if (attached) {
+                    await nvim.call("win_execute", [spare, "silent! noautocmd close"]);
+                }
             }
             if (!complete || reset) {
                 await nvim.command("wincmd =");
@@ -235,7 +293,7 @@ export class OutputTabs {
             // a complete layout leaves the focus alone, the user may already be in another window of the tab
             if (!complete) {
                 const stay: boolean = await tabOf(before) === tab;
-                await nvim.call("win_gotoid", [stay ? before : terminal]);
+                await nvim.call("win_gotoid", [stay ? before : (attached ? views[0].windowId : terminal)]);
             }
         }
     }
@@ -251,15 +309,15 @@ export class OutputTabs {
     }
 
     // a view in any tab goes, the tree view shows in one window only
-    private async rebuildViews(views: coc.TreeView<any>[], terminal: number): Promise<void> {
+    private async rebuildViews(views: coc.TreeView<any>[], anchor: number, split: string): Promise<void> {
         const nvim = coc.workspace.nvim;
         for (const view of views) {
             if (view.visible && view.windowId !== undefined) {
                 await nvim.call("win_execute", [view.windowId, "silent! noautocmd close"]);
             }
         }
-        await nvim.call("win_gotoid", [terminal]);
-        await views[0].show("aboveleft split");
+        await nvim.call("win_gotoid", [anchor]);
+        await views[0].show(split);
         for (let i = 1; i < views.length; i++) {
             await nvim.call("win_gotoid", [views[i - 1].windowId]);
             await views[i].show("belowright vs");

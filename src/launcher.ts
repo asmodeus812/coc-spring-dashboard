@@ -4,11 +4,12 @@ import * as fs from "fs";
 import * as net from "net";
 import * as path from "path";
 import { AttachTarget, DebugBackend, detectBackend } from "./debug";
-import { AppLauncher, AppState, LaunchOptions, LaunchTarget, jmxArgs } from "./launch";
-import { OutputTabs } from "./output";
-import { LaunchArguments, LaunchPanel, LaunchSettings, defaultSettings, launchArguments } from "./settings";
-import { waitFor } from "./ready";
-import { command, config, failed, javaCommand, sleep } from "./util";
+import { AppLauncher, AppState, AttachOptions, AttachProject, LaunchOptions, LaunchTarget, jmxArgs } from "./launch";
+import { OutputTabs, TabApp } from "./output";
+import { AttachPanel, AttachSettings, LaunchArguments, LaunchPanel, LaunchSettings, defaultSettings, launchArguments } from "./settings";
+import { connectJmx, connectPid, disconnectPid } from "./remote";
+import { need, waitFor } from "./ready";
+import { config, failed, javaCommand } from "./util";
 
 /**
  * An app the dashboard started: its terminal, the JVM and what a debugger needs to attach.
@@ -32,13 +33,12 @@ export class TerminalLauncher implements AppLauncher {
     private readonly emitter = new coc.Emitter<void>();
     public readonly onDidChangeState: coc.Event<void> = this.emitter.event;
 
-    /** Whether the live data has a process of a pid, set from the live data: its own connection ends the polling. */
-    public connected: (pid: number) => boolean = () => false;
-
     private readonly panel: LaunchPanel;
+    private readonly attachPanel: AttachPanel;
 
     constructor(private readonly context: coc.ExtensionContext, private readonly output: OutputTabs) {
         this.panel = new LaunchPanel(context);
+        this.attachPanel = new AttachPanel(context);
         context.subscriptions.push(coc.window.onDidCloseTerminal(t => this.closed(t)), this.emitter);
     }
 
@@ -108,6 +108,99 @@ export class TerminalLauncher implements AppLauncher {
             }
         }
         return message;
+    }
+
+    /**
+     * Attaches to an app the dashboard did not start: the live data over JMX and the debugger over JDWP, each when its port
+     * is set, one failing does not undo the other. The dashboard tab of the app opens with the four views. Any option
+     * skips the panel, the missing ones are the remembered values.
+     */
+    public async attachRemote(options: AttachOptions, projects: AttachProject[]): Promise<string> {
+        const given: boolean = Object.values(options).some(v => v !== undefined);
+        const names: string[] = [...new Set(projects.map(p => p.name))];
+        const settings: AttachSettings | undefined = given ? withSaved(options, this.attachPanel.saved()) : await this.attachPanel.open(names);
+        let message: string;
+        if (settings === undefined) {
+            message = "Attach cancelled";
+        } else if (settings.jmxPort === "" && settings.debugPort === "") {
+            message = "No port to attach";
+            coc.window.showWarningMessage(message);
+        } else if (settings.project === "") {
+            message = "No project to attach";
+            coc.window.showWarningMessage(message);
+        } else {
+            if (given) {
+                await this.attachPanel.remember(settings);
+            }
+            const messages: string[] = [];
+            const debug = settings.debugPort !== "" ? await this.attachDebugger(settings) : undefined;
+            if (debug !== undefined) {
+                messages.push(debug.message);
+            }
+            if (settings.jmxPort !== "") {
+                messages.push((await this.attachLive(settings)).message);
+            }
+            const debuggerAttached: boolean = debug?.ok === true;
+            const project: AttachProject | undefined = projects.find(p => p.name === settings.project);
+            const tab: TabApp = { key: `attach:${settings.project}`, name: settings.project, folder: project?.path ?? coc.workspace.root };
+            await this.output.showViews(tab, { focus: !debuggerAttached, origin: await this.output.origin() });
+            message = messages.join(", ");
+        }
+        return message;
+    }
+
+    private async attachLive(s: AttachSettings): Promise<{ message: string; ok: boolean }> {
+        let message: string = `${s.project}: live data connecting`;
+        let ok: boolean = true;
+        if (need("spring")) {
+            await connectJmx(s.host, s.jmxPort).catch(e => {
+                failed(`connect ${s.host}:${s.jmxPort}`, e, undefined);
+                message = `${s.project}: live data not connected`;
+                ok = false;
+            });
+        } else {
+            message = "Spring Boot server not running";
+            ok = false;
+        }
+        if (ok) {
+            coc.window.showInformationMessage(message);
+        }
+        return { message, ok };
+    }
+
+    private async attachDebugger(s: AttachSettings): Promise<{ message: string; ok: boolean }> {
+        const backend: DebugBackend | undefined = await detectBackend();
+        let message: string = `${s.project}: debugger attached`;
+        let ok: boolean = false;
+        if (backend === undefined) {
+            message = this.noDebugger();
+        } else if (!need("java")) {
+            message = "Java server starting";
+        } else if (!await reachable(s.host, Number(s.debugPort))) {
+            message = `Nothing on ${s.host}:${s.debugPort}`;
+            coc.window.showWarningMessage(message);
+        } else {
+            try {
+                await this.attachBackend(backend, { name: s.project, projectName: s.project, host: s.host, jdwpPort: Number(s.debugPort) });
+                ok = true;
+                coc.window.showInformationMessage(message);
+            } catch (e) {
+                failed(`attach ${s.project}`, e, undefined);
+                message = "Debugger not attached";
+                coc.window.showErrorMessage(message);
+            }
+        }
+        return { message, ok };
+    }
+
+    /**
+     * Starts the java-debug adapter and attaches the backend to the JDWP port of the target, within the attach timeout.
+     */
+    private async attachBackend(backend: DebugBackend, target: Omit<AttachTarget, "adapterPort">): Promise<AttachTarget> {
+        const adapterPort: number = await javaCommand<number>("vscode.java.startDebugSession");
+        const attached: AttachTarget = { ...target, adapterPort };
+        await backend.attach(attached, config<number>("debug.attachTimeout", 30) * 1000);
+        return attached;
     }
 
     public async stop(app: LaunchTarget, pid?: number): Promise<string> {
@@ -191,7 +284,7 @@ export class TerminalLauncher implements AppLauncher {
         session.terminal = terminal;
         session.jdwpPort = jdwpPort;
         session.pid = await terminal.processId;
-        void connectLive(session, () => session.pid !== undefined && this.connected(session.pid));
+        void connectLive(session, app);
         await this.output.show({ key: app.mainClass, name: app.name, folder: app.path }, terminal.bufnr, { focus: config<boolean>("launch.focusOutput", false), origin });
 
         let message: string;
@@ -212,9 +305,7 @@ export class TerminalLauncher implements AppLauncher {
         const wasWaiting: boolean = session.state === "waiting";
         let message: string;
         try {
-            const adapterPort: number = await javaCommand<number>("vscode.java.startDebugSession");
-            const target: AttachTarget = { name: app.name, projectName: app.projectName, adapterPort, jdwpPort };
-            await backend.attach(target, config<number>("debug.attachTimeout", 30) * 1000);
+            const target: AttachTarget = await this.attachBackend(backend, { name: app.name, projectName: app.projectName, host: "127.0.0.1", jdwpPort });
             session.attached = target;
             this.setState(session, "debugging");
             this.watchDebugger(session, backend, target);
@@ -279,6 +370,9 @@ export class TerminalLauncher implements AppLauncher {
 
     private setState(session: Session, state: AppState): void {
         session.state = state;
+        if (state === "stopped" && session.pid !== undefined) {
+            void disconnectPid(session.pid).catch(() => undefined);
+        }
         this.emitter.fire();
     }
 
@@ -327,10 +421,6 @@ export class TerminalLauncher implements AppLauncher {
 }
 
 const WINDOWS: boolean = process.platform === "win32";
-const LIVE_CONNECT = "sts/livedata/connect";
-const LIVE_POLL_MS = [2000, 4000, 8000, 15000];
-const LIVE_GIVE_UP_MS = 180000;
-const LIST_TIMEOUT_MS = 10000;
 
 function quote(value: string): string {
     return `"${value.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}"`;
@@ -347,6 +437,31 @@ function freePort(): Promise<number> {
             const port: number = (server.address() as net.AddressInfo).port;
             server.close(() => resolve(port));
         });
+    });
+}
+
+/**
+ * The given attach options over the remembered settings.
+ */
+function withSaved(options: AttachOptions, saved: AttachSettings): AttachSettings {
+    const text = (value: unknown, fallback: string): string => value === undefined ? fallback : String(value).trim();
+    return {
+        host: text(options.host, saved.host),
+        jmxPort: text(options.jmxPort, saved.jmxPort),
+        debugPort: text(options.debugPort, saved.debugPort),
+        project: text(options.project, saved.project),
+    };
+}
+
+/**
+ * Whether something listens on a port, a connection is tried for 3 seconds.
+ */
+function reachable(host: string, port: number): Promise<boolean> {
+    return new Promise(resolve => {
+        const socket: net.Socket = net.connect({ host, port, timeout: 3000 });
+        socket.on("connect", () => { socket.destroy(); resolve(true); });
+        socket.on("timeout", () => { socket.destroy(); resolve(false); });
+        socket.on("error", () => resolve(false));
     });
 }
 
@@ -384,33 +499,18 @@ async function alive(pid: number): Promise<boolean> {
 }
 
 /**
- * Connects the live data of a started app: once the spring boot server is ready the entry of the session's pid in its
- * list of local processes is connected as soon as it shows up, its automatic connection does not reliably pick up a
- * fresh JVM. The list is asked for with a growing delay (2, 4, 8, then every 15 s), one request at a time, until the app
- * is connected, by the server itself too, or the app stops. After 3 minutes of asking it gives up with a line in the
- * output channel; an entry already connected offers refresh instead.
+ * Connects the live data of a started app: once the spring boot server is ready the pid of the session is sent to it
+ * with the remote apps, it attaches to the local process directly and does not look for it in its list of local
+ * processes. The entry is taken out again when the app stops.
  */
-async function connectLive(session: Session, connected: () => boolean): Promise<void> {
-    const pid: string = String(session.pid);
-    // the list keys a local process by its pid alone, `<pid> - <main class>` once connected, the label ends in `(pid: N)`
-    const ours = (p: any): boolean =>
-        p?.processKey === pid || (typeof p?.processKey === "string" && p.processKey.startsWith(`${pid} - `)) || (typeof p?.label === "string" && p.label.endsWith(`(pid: ${pid})`));
-    const stopped = (): boolean => session.state === "stopped" || connected();
-    if (await waitFor("spring", stopped)) {
-        const until: number = Date.now() + LIVE_GIVE_UP_MS;
-        let attempt: number = 0;
-        while (!stopped() && Date.now() < until) {
-            await sleep(LIVE_POLL_MS[Math.min(attempt++, LIVE_POLL_MS.length - 1)]);
-            if (!stopped()) {
-                const processes: any[] = (await Promise.race([command<any[]>("sts/livedata/listProcesses"), new Promise<any[]>(resolve => setTimeout(() => resolve([]), LIST_TIMEOUT_MS))]).catch(() => [])) ?? [];
-                const entry: any = processes.find(ours);
-                if (entry !== undefined && !stopped() && entry.action === LIVE_CONNECT) {
-                    await command(LIVE_CONNECT, entry).catch(() => undefined);
-                }
-            }
+async function connectLive(session: Session, app: LaunchTarget): Promise<void> {
+    const pid: number | undefined = session.pid;
+    if (pid !== undefined && await waitFor("spring", () => session.state === "stopped")) {
+        if (session.state !== "stopped") {
+            await connectPid(pid, app.mainClass, app.projectName).catch(e => failed(`connect the live data of ${pid}`, e, undefined));
         }
-        if (!stopped()) {
-            failed(`connect the live data of ${pid}`, "not connected after 3 minutes", undefined);
+        if (session.state === "stopped") {
+            await disconnectPid(pid).catch(() => undefined);
         }
     }
 }

@@ -20,6 +20,25 @@ export interface LaunchOptions {
 }
 
 /**
+ * Where to attach to an app the dashboard did not start. A part that is not given comes from the attach panel, which is
+ * skipped when any part is given.
+ */
+export interface AttachOptions {
+    host?: string;
+    jmxPort?: string;
+    debugPort?: string;
+    project?: string;
+}
+
+/**
+ * A Java project to attach to: its name in jdtls and its folder.
+ */
+export interface AttachProject {
+    name: string;
+    path: string;
+}
+
+/**
  * Where an app is in its life, as far as the dashboard started it.
  */
 export type AppState = "starting" | "waiting" | "running" | "debugging" | "stopped";
@@ -39,6 +58,8 @@ export interface AppLauncher {
     hasOutput(app: LaunchTarget): Promise<boolean>;
     /** Attaches the debugger to an app that was started with run. */
     attach(app: LaunchTarget): Promise<string>;
+    /** Connects the live data and attaches the debugger to an app the dashboard did not start. */
+    attachRemote(options: AttachOptions, projects: AttachProject[]): Promise<string>;
     /** Stops an app, `pid` is the process of an app the dashboard did not start. */
     stop(app: LaunchTarget, pid?: number): Promise<string>;
     state(app: LaunchTarget): AppState;

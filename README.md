@@ -26,7 +26,8 @@ Using it inside Neovim is described in the help page:
   -Dspring.jmx.enabled=true -Dmanagement.endpoints.jmx.exposure.include=*
   ```
 
-- For apps that run on your machine, this coc-springboot setting in
+- Apps started by the dashboard connect by their pid and need no setting. For
+  other apps that run on your machine, this coc-springboot setting in
   `coc-settings.json`:
 
   ```json
@@ -76,6 +77,12 @@ Set these keys in `coc-settings.json` (`:CocConfig` opens it).
 Remote apps are listed in `boot-java.remote-apps`, a coc-springboot
 setting; see `:help coc-spring-dashboard-remote`.
 
+Attach to an app (`spring-boot-dashboard.attach`) connects the live data over
+JMX and attaches the debugger over JDWP for an app the dashboard did not start
+(another machine, a container, a forwarded port). A panel asks for the host,
+the JMX port, the debug port and the project, and can copy the matching JVM
+options. See `:help coc-spring-dashboard-attach`.
+
 ## Troubleshooting
 
 - Failed requests to the Spring language server are logged to the output
@@ -86,8 +93,7 @@ setting; see `:help coc-spring-dashboard-remote`.
 - No trees, or a warning that coc-springboot or coc-java is not active:
   check `:CocList extensions` and open a Java file of the project.
 - An app stays `○ stopped` while it runs: check the actuator dependency, the
-  JVM arguments and `boot-java.live-information.all-local-java-processes`
-  above, then run `:CocCommand spring.dashboard.livedata.refresh`.
+  JVM arguments above, then run `:CocCommand spring.dashboard.livedata.refresh`.
 - Every message the dashboard shows is explained in
   `:help coc-spring-dashboard-messages`.
 
