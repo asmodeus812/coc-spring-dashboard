@@ -324,10 +324,13 @@ One line per running app, with three lines under it:
               followed by `(count <n>)`
 
 Each line shows a sparkline of the latest values, drawn with `▁▂▃▄▅▆▇█`,
-and the current value. The values are fetched every
-`spring.dashboard.memory-view.fetch-data.delay-in-milliseconds` and the
-sparkline keeps `spring.dashboard.memory-view.display-data.max-datapoints`
-values. `spring.dashboard.memory.poll` fetches them now.
+and the current value. Every
+`spring.dashboard.memory-view.fetch-data.delay-in-milliseconds` the dashboard
+asks the Spring Boot server to fetch the memory and the gc pauses of each
+app; a line gets its new value when the server announces that the fetch is
+done, so the first values show after the first fetch. The sparkline keeps
+`spring.dashboard.memory-view.display-data.max-datapoints` values.
+`spring.dashboard.memory.poll` asks for a fetch now.
 
 When an app stops its lines disappear.
 

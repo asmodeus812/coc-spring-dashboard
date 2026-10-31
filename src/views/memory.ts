@@ -61,12 +61,17 @@ export class MemoryView implements coc.TreeDataProvider<MemoryElement>, coc.Disp
         this.timer = setInterval(() => this.poll(), config<number>("memory-view.fetch-data.delay-in-milliseconds", 5000));
     }
 
+    /**
+     * Asks the language server to fetch the memory and the gc pauses of each app. The data is read when the server
+     * announces it (the update events of the constructor): it answers "Live Metrics Data is not yet available" before
+     * the first fetch is done, and a refresh of "memory" leaves the gc pauses alone.
+     */
     public async poll(): Promise<void> {
         for (const app of this.d.live.apps.values()) {
             const processKey: string = app.process.processKey;
-            await this.d.api.refreshLiveProcessMetricsData({ processKey, endpoint: "metrics", metricName: "memory" }).catch(e => failed(`refresh memory of ${processKey}`, e, undefined));
-            await this.memory(app.process);
-            await this.gcPauses(app.process);
+            for (const metricName of ["memory", "gcPauses"]) {
+                await this.d.api.refreshLiveProcessMetricsData({ processKey, endpoint: "metrics", metricName }).catch(e => failed(`refresh ${metricName} of ${processKey}`, e, undefined));
+            }
         }
     }
 
