@@ -72,6 +72,7 @@ Set these keys in `coc-settings.json` (`:CocConfig` opens it).
 | `spring.dashboard.stop.gracePeriod` | number | `10` | Seconds between Stop (SIGTERM) and the kill (SIGKILL). |
 | `spring.dashboard.launch.prompt` | string | `first` | When the launch panel opens: `first` (first time per app), `always` or `never`. |
 | `spring.dashboard.launch.focusOutput` | boolean | `false` | Switch to the dashboard tab of an app when it is started. |
+| `spring.dashboard.layout.terminalHeight` | number | `65` | Percent (10 to 90) of the height of an app dashboard tab given to the terminal under the views. |
 | `spring.dashboard.apps` | object | `{}` | Default launch settings per app name (`profiles`, `port`, `logLevel`, `logPackages`, `debugReport`, `vmArgs`, `args`, `env`), e.g. `{ "my-app": { "vmArgs": "-Xmx512m" } }`. |
 
 Connect and Disconnect (`spring.remoteApp.connect`, `spring.remoteApp.disconnect`)

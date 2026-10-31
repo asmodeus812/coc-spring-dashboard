@@ -1,4 +1,5 @@
 import * as coc from "coc.nvim";
+import { config } from "./util";
 
 /**
  * A Vimscript string literal.
@@ -262,8 +263,8 @@ export class OutputTabs {
 
     /**
      * Makes the layout of the current tab when it is an app tab: the views over the terminal. Views that sit in another
-     * tab move here. A missing view makes all four again, in their order, and `wincmd =` gives the columns and the two
-     * halves the same size.
+     * tab move here. A missing view makes all four again, in their order, `wincmd =` gives the columns the same width
+     * and the terminal gets `layout.terminalHeight` percent of the height.
      */
     private async build(reset: boolean): Promise<void> {
         const nvim = coc.workspace.nvim;
@@ -288,6 +289,9 @@ export class OutputTabs {
             }
             if (!complete || reset) {
                 await nvim.command("wincmd =");
+                if (!attached) {
+                    await sizeTerminal(terminal, views[0].windowId ?? 0);
+                }
             }
             // only a rebuilt layout moved the focus: back to the window the user was in (the terminal when it is gone);
             // a complete layout leaves the focus alone, the user may already be in another window of the tab
@@ -323,6 +327,17 @@ export class OutputTabs {
             await views[i].show("belowright vs");
         }
     }
+}
+
+/**
+ * Gives the terminal under the views `spring.dashboard.layout.terminalHeight` percent (10 to 90) of the height the two
+ * share, the status line between them included.
+ */
+async function sizeTerminal(terminal: number, view: number): Promise<void> {
+    const nvim = coc.workspace.nvim;
+    const percent: number = Math.min(90, Math.max(10, config<number>("layout.terminalHeight", 65)));
+    const shared: number = (await nvim.call("winheight", [terminal])) as number + ((await nvim.call("winheight", [view])) as number) + 1;
+    await nvim.call("win_execute", [terminal, `resize ${Math.round(shared * percent / 100)}`]);
 }
 
 /**

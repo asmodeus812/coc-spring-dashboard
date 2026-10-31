@@ -203,12 +203,16 @@ extension. Each app gets a tab at the end of the tab line, its dashboard, with
 the working directory set to the project (`:tcd`):
 >
     +-----------+-----------+------------+----------+
-    | BEANS     | MAPPINGS  | PROPERTIES | MEMORY   |   upper half,
+    | BEANS     | MAPPINGS  | PROPERTIES | MEMORY   |   top,
     |           |           |            |          |   4 equal columns
     +-----------+-----------+------------+----------+
-    | terminal: the JVM of this run, with the output |   lower half
+    | terminal: the JVM of this run, with the output |   bottom, 65% of
+    |                                                |   the height
     +------------------------------------------------+
 <
+`spring.dashboard.layout.terminalHeight` sets the percent of the height the
+terminal gets, from 10 to 90, 65 by default.
+
 The terminal has the output, colors and input. Running again reuses the tab:
 the new terminal replaces the old one, the views stay. The focus stays where
 it was, unless `spring.dashboard.launch.focusOutput` is on. "Show app
