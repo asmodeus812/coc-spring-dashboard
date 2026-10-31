@@ -74,8 +74,11 @@ Set these keys in `coc-settings.json` (`:CocConfig` opens it).
 | `spring.dashboard.launch.focusOutput` | boolean | `false` | Switch to the dashboard tab of an app when it is started. |
 | `spring.dashboard.apps` | object | `{}` | Default launch settings per app name (`profiles`, `port`, `logLevel`, `logPackages`, `debugReport`, `vmArgs`, `args`, `env`), e.g. `{ "my-app": { "vmArgs": "-Xmx512m" } }`. |
 
-Remote apps are listed in `boot-java.remote-apps`, a coc-springboot
-setting; see `:help coc-spring-dashboard-remote`.
+Connect and Disconnect (`spring.remoteApp.connect`, `spring.remoteApp.disconnect`)
+only serve the items of `boot-java.remote-apps`, a coc-springboot setting (see
+`:help coc-springboot-remote-apps` and `:help coc-spring-dashboard-remote`).
+Apps the dashboard starts are connected by themselves; any other app goes
+through Attach.
 
 Attach to an app (`spring-boot-dashboard.attach`) connects the live data over
 JMX and attaches the debugger over JDWP for an app the dashboard did not start

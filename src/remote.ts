@@ -16,6 +16,7 @@ interface RemoteApp {
 const OWNER: string = "coc-spring-dashboard";
 const connected: RemoteApp[] = [];
 const label = (a: RemoteApp) => `${a.host} (${a.jmxurl ?? a.processId})`;
+const row = (a: RemoteApp) => ({ label: a.host, description: a.jmxurl, app: a });
 const send = () => coc.commands.executeCommand("sts/livedata/remoteConnect", OWNER, connected);
 
 /**
@@ -59,17 +60,23 @@ export async function disconnectPid(pid: number): Promise<void> {
     }
 }
 
+const configuredApps = (): RemoteApp[] => coc.workspace.getConfiguration("boot-java").get<RemoteApp[]>("remote-apps", []);
+
 /**
- * Connects and disconnects the remote apps of `boot-java.remote-apps` through the live data of the language server.
+ * Connects and disconnects the apps of `boot-java.remote-apps` (no discovery) through the live data of the language
+ * server. Apps connected through Attach are not listed.
  */
 export function registerRemote(d: Dashboard): void {
     const connect = async (): Promise<string | undefined> => {
-        const apps: RemoteApp[] = coc.workspace.getConfiguration("boot-java").get<RemoteApp[]>("remote-apps", []).filter(a => !connected.some(c => c.jmxurl === a.jmxurl));
+        const configured: RemoteApp[] = configuredApps();
+        const apps: RemoteApp[] = configured.filter(a => !connected.some(c => c.jmxurl === a.jmxurl));
         let picked: { label: string; app: RemoteApp } | undefined;
-        if (apps.length === 0) {
+        if (configured.length === 0) {
+            coc.window.showWarningMessage("No remote app configured");
+        } else if (apps.length === 0) {
             coc.window.showWarningMessage("No remote app to connect");
         } else {
-            picked = await coc.window.showQuickPick(apps.map(a => ({ label: label(a), app: a })), { title: "Connect a remote app" });
+            picked = await coc.window.showQuickPick(apps.map(row), { title: "Connect a remote app" });
             if (picked) {
                 connected.push({ ...picked.app, manualConnect: false });
                 await send();
@@ -79,12 +86,13 @@ export function registerRemote(d: Dashboard): void {
         return picked ? label(picked.app) : undefined;
     };
     const disconnect = async (): Promise<string | undefined> => {
-        const remote: RemoteApp[] = connected.filter(a => a.jmxurl !== undefined);
+        const configured: RemoteApp[] = configuredApps();
+        const remote: RemoteApp[] = connected.filter(a => configured.some(c => c.jmxurl === a.jmxurl));
         let picked: { label: string; app: RemoteApp } | undefined;
         if (remote.length === 0) {
-            coc.window.showWarningMessage("No remote app to disconnect");
+            coc.window.showWarningMessage("No remote app connected");
         } else {
-            picked = await coc.window.showQuickPick(remote.map(a => ({ label: label(a), app: a })), { title: "Disconnect a remote app" });
+            picked = await coc.window.showQuickPick(remote.map(row), { title: "Disconnect a remote app" });
             if (picked) {
                 connected.splice(connected.indexOf(picked.app), 1);
                 await send();

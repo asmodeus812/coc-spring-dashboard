@@ -134,8 +134,10 @@ Find ~
                                                app
 
 Remote apps ~
-  `spring.remoteApp.connect`                   connect a remote app
-  `spring.remoteApp.disconnect`                disconnect a remote app
+  `spring.remoteApp.connect`                   connect an app of
+                                               `boot-java.remote-apps`
+  `spring.remoteApp.disconnect`                disconnect an app of
+                                               `boot-java.remote-apps`
 
 Without a tree line the app commands ask which app to use.
 
@@ -413,13 +415,20 @@ A remote app is an app on another host that you reach over JMX. List them in
         }
     ]
 <
-  `spring.remoteApp.connect`      pick a remote app and connect it
-  `spring.remoteApp.disconnect`   pick a connected remote app and
+  `spring.remoteApp.connect`      pick an app of the list and connect it
+  `spring.remoteApp.disconnect`   pick a connected app of the list and
                                   disconnect it
 
-The pick lists each app as `host (jmxurl)`. A connected remote app shows
-live data in the trees like a local running app. Connect sends the app with
-`manualConnect` false, so that the Spring Boot server connects it. To
+Connect and Disconnect only serve the items of `boot-java.remote-apps`, there
+is no discovery; for the setting see |coc-springboot-remote-apps|. Apps that
+the dashboard starts are connected by themselves, any other app goes through
+|coc-spring-dashboard-attach|.
+
+The pick lists each app by its `host`, with its `jmxurl` beside it. A
+connected remote app shows live data in the trees like a local running app.
+Connect sends the app with `manualConnect` false, so that the Spring Boot
+server connects it. Disconnect lists only the connected apps of the list, an
+app connected through |coc-spring-dashboard-attach| is not among them. To
 connect and debug an app in one step, see |coc-spring-dashboard-attach|.
 
 ==============================================================================
@@ -523,9 +532,10 @@ MESSAGES                                       *coc-spring-dashboard-messages*
     `spring.dashboard.showUnderCursor` found no bean or mapping on the
     cursor line. Move to a line with a `◆` or `↗` sign.
 
-"No remote app to connect", "No remote app to disconnect"
-    `boot-java.remote-apps` is empty or all its apps are connected, or no
-    remote app is connected. |coc-spring-dashboard-remote|
+"No remote app configured", "No remote app to connect",
+"No remote app connected"
+    `boot-java.remote-apps` is empty, all its apps are connected, or none
+    of them is connected. |coc-spring-dashboard-remote|
 
 "No app found", "No stopped app", "No running app", "No app dashboard"
     Nothing to pick for the command. Open a Java file of the project and
