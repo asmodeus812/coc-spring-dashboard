@@ -139,10 +139,10 @@ export function registerMappings(d: Dashboard): MappingsView {
     const view = registerView(d, "spring.mappings", "SPRING ENDPOINT MAPPINGS", provider, true);
     d.finders.set("spring.mappings", (key: string) => provider.find(key));
     d.context.subscriptions.push(
-        coc.commands.registerCommand("spring.dashboard.endpoint.navigate", (arg?: MappingsElement | string) => provider.navigate(arg)),
-        coc.commands.registerCommand("spring.dashboard.endpoint.open", (arg?: MappingsElement | string) => provider.open(arg)),
-        coc.commands.registerCommand("spring.dashboard.mapping.showAll", () => provider.setDefinedOnly(false)),
-        coc.commands.registerCommand("spring.dashboard.mapping.showDefined", () => provider.setDefinedOnly(true)),
+        coc.commands.registerCommand("spring.dashboard.endpoint.navigate", (arg?: MappingsElement | string) => provider.navigate(arg), undefined, true),
+        coc.commands.registerCommand("spring.dashboard.endpoint.open", (arg?: MappingsElement | string) => provider.open(arg), undefined, true),
+        coc.commands.registerCommand("spring.dashboard.mapping.showAll", () => provider.setDefinedOnly(false), undefined, true),
+        coc.commands.registerCommand("spring.dashboard.mapping.showDefined", () => provider.setDefinedOnly(true), undefined, true),
         coc.commands.registerCommand("spring.mappings.find", () => findInView(view)),
     );
     return provider;

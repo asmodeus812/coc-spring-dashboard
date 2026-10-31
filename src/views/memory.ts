@@ -1,8 +1,7 @@
 import * as coc from "coc.nvim";
 import { Dashboard, registerView } from "../dashboard";
-import { failed } from "../live";
 import { LiveProcess } from "../sts";
-import { config } from "../util";
+import { config, failed } from "../util";
 
 const BARS: string = "▁▂▃▄▅▆▇█";
 
@@ -137,6 +136,6 @@ export class MemoryView implements coc.TreeDataProvider<MemoryNode>, coc.Disposa
 export function registerMemory(d: Dashboard): MemoryView {
     const provider = new MemoryView(d);
     registerView(d, "spring.memoryView", "SPRING MEMORY", provider);
-    d.context.subscriptions.push(provider, coc.commands.registerCommand("spring.dashboard.memory.poll", () => provider.poll()));
+    d.context.subscriptions.push(provider, coc.commands.registerCommand("spring.dashboard.memory.poll", () => provider.poll(), undefined, true));
     return provider;
 }

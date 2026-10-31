@@ -29,14 +29,21 @@ export function registerRemote(d: Dashboard): void {
             if (picked) {
                 connected.push(picked.app);
                 await send();
+                coc.window.showInformationMessage(`Connecting ${label(picked.app)}`);
             }
             return picked ? label(picked.app) : undefined;
         }),
         coc.commands.registerCommand("spring.remoteApp.disconnect", async () => {
-            const picked = connected.length > 0 ? await coc.window.showQuickPick(connected.map(a => ({ label: label(a), app: a })), { title: "Disconnect a remote app" }) : undefined;
+            let picked: { label: string; app: RemoteApp } | undefined;
+            if (connected.length === 0) {
+                coc.window.showWarningMessage("No connected remote app to disconnect");
+            } else {
+                picked = await coc.window.showQuickPick(connected.map(a => ({ label: label(a), app: a })), { title: "Disconnect a remote app" });
+            }
             if (picked) {
                 connected.splice(connected.indexOf(picked.app), 1);
                 await send();
+                coc.window.showInformationMessage(`Disconnected ${label(picked.app)}`);
             }
             return picked ? label(picked.app) : undefined;
         }),

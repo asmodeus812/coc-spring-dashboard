@@ -1,5 +1,6 @@
 import * as coc from "coc.nvim";
 import { AppsView, BootApp } from "./apps";
+import { AppState } from "./launch";
 import { LiveApp, LiveData } from "./live";
 import { StsApi } from "./sts";
 import { Symbols } from "./symbols";
@@ -34,10 +35,20 @@ export function registerView<T>(d: Dashboard, id: string, title: string, provide
 export const TREE_SPLIT: string = "botright 40vs";
 
 /**
- * The icon of an app or a group, filled when the app is running.
+ * The icon of an app or a group, filled when the app is running. An app the dashboard started has more states.
  */
-export function stateIcon(running: boolean): coc.TreeItemIcon {
-    return running ? { text: "●", hlGroup: "DiagnosticOk" } : { text: "○", hlGroup: "Comment" };
+export function stateIcon(state: boolean | AppState): coc.TreeItemIcon {
+    let icon: coc.TreeItemIcon;
+    if (state === "starting" || state === "waiting") {
+        icon = { text: "◐", hlGroup: "DiagnosticWarn" };
+    } else if (state === "debugging") {
+        icon = { text: "◉", hlGroup: "DiagnosticInfo" };
+    } else if (state === true || state === "running") {
+        icon = { text: "●", hlGroup: "DiagnosticOk" };
+    } else {
+        icon = { text: "○", hlGroup: "Comment" };
+    }
+    return icon;
 }
 
 export async function focusView(view: coc.TreeView<any>): Promise<void> {

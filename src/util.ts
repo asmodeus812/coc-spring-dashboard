@@ -6,6 +6,25 @@ export function config<T>(key: string, fallback: T): T {
     return coc.workspace.getConfiguration("spring.dashboard").get<T>(key, fallback);
 }
 
+let channel: coc.OutputChannel | undefined;
+
+/**
+ * Logs a failed request or action to the "Spring Dashboard" output channel and answers the fallback, so the views keep
+ * their last data and no notification is raised.
+ */
+export function failed<T>(request: string, error: unknown, fallback: T): T {
+    channel = channel ?? coc.window.createOutputChannel("Spring Dashboard");
+    channel.appendLine(`[${new Date().toISOString()}] ${request} failed: ${error instanceof Error ? error.message : String(error)}`);
+    return fallback;
+}
+
+/**
+ * Runs a command of the java language server (jdtls) through coc-java.
+ */
+export function javaCommand<T>(name: string, ...args: any[]): Promise<T> {
+    return coc.commands.executeCommand<T>("java.execute.workspaceCommand", name, ...args);
+}
+
 export async function sleep(ms: number): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -62,4 +81,43 @@ export function projectRoot(file: string): string {
         dir = path.dirname(dir);
     }
     return dir;
+}
+
+/**
+ * Splits an argument line into arguments, double and single quotes group words and a backslash escapes the next character.
+ */
+export function splitArgs(line: string): string[] {
+    const args: string[] = [];
+    let current: string = "";
+    let quote: string = "";
+    let started: boolean = false;
+    for (let i = 0; i < line.length; i++) {
+        const c: string = line[i];
+        if (c === "\\" && quote !== "'" && i + 1 < line.length) {
+            current += line[++i];
+            started = true;
+        } else if (quote !== "") {
+            if (c === quote) {
+                quote = "";
+            } else {
+                current += c;
+            }
+        } else if (c === "\"" || c === "'") {
+            quote = c;
+            started = true;
+        } else if (/\s/.test(c)) {
+            if (started) {
+                args.push(current);
+            }
+            current = "";
+            started = false;
+        } else {
+            current += c;
+            started = true;
+        }
+    }
+    if (started) {
+        args.push(current);
+    }
+    return args;
 }

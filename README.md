@@ -31,6 +31,16 @@ Using it inside Neovim is described in the help page:
   "boot-java.live-information.all-local-java-processes": true
   ```
 
+- For Debug and Attach debugger, [nvim-dap](https://github.com/mfussenegger/nvim-dap)
+  in Neovim or [vimspector](https://github.com/puremourning/vimspector) in Vim
+  and Neovim. Run needs no debugger.
+
+Run, Debug and Stop are done by the dashboard: it opens a
+launch panel (profiles, server port, logging, JVM options, program arguments
+and environment, remembered per app), starts the JVM with its output in a tab
+per app, and stops it with SIGTERM and then SIGKILL. The JMX arguments above
+are added for you for apps it starts.
+
 ## Installation
 
 ```vim
@@ -55,6 +65,11 @@ Set these keys in `coc-settings.json` (`:CocConfig` opens it).
 | `spring.dashboard.memory-view.fetch-data.delay-in-milliseconds` | number | `5000` | Interval of the memory metrics poll. |
 | `spring.dashboard.memory-view.display-data.max-datapoints` | number | `10` | Width of the memory sparklines. |
 | `spring.dashboard.enableGutter` | string (`on`, `off`) | `"on"` | Signs on the bean definitions and request mappings. |
+| `spring.dashboard.debug.attachTimeout` | number | `30` | Seconds to wait for a debugger to attach; the app is killed after that. |
+| `spring.dashboard.stop.gracePeriod` | number | `10` | Seconds between Stop (SIGTERM) and the kill (SIGKILL). |
+| `spring.dashboard.launch.prompt` | string | `first` | When the launch panel opens: `first` (first time per app), `always` or `never`. |
+| `spring.dashboard.launch.focusOutput` | boolean | `false` | Switch to the output tab of an app when it is started. |
+| `spring.dashboard.apps` | object | `{}` | Default launch settings per app name (`profiles`, `port`, `logLevel`, `logPackages`, `debugReport`, `vmArgs`, `args`, `env`), e.g. `{ "my-app": { "vmArgs": "-Xmx512m" } }`. |
 
 Remote apps are listed in `boot-java.remote-apps`, a coc-springboot
 setting; see `:help coc-spring-dashboard-remote`.

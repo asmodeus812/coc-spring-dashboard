@@ -59,6 +59,7 @@ export class Symbols implements coc.Disposable {
     public readonly onDidChange: coc.Event<void> = this.emitter.event;
     private readonly disposables: coc.Disposable[] = [];
     private queue: Promise<void> = Promise.resolve();
+    private requestFailed: boolean = false;
     private timer: NodeJS.Timeout | undefined = undefined;
     private retries: number = 0;
     private emptyRetries: number = 0;
@@ -77,9 +78,12 @@ export class Symbols implements coc.Disposable {
     /**
      * Reloads the symbols, the refreshes run one after the other so the last one always wins.
      */
-    public refresh(): Promise<void> {
+    public async refresh(report: boolean = false): Promise<void> {
         this.queue = this.queue.then(() => this.load()).catch(() => undefined);
-        return this.queue;
+        await this.queue;
+        if (report && this.requestFailed) {
+            coc.window.showErrorMessage("Spring Boot Dashboard: could not load the beans and endpoints, the Spring Boot language server may still be starting");
+        }
     }
 
     public under<T extends { location: coc.Location }>(symbols: T[], root: string): T[] {
@@ -132,6 +136,7 @@ export class Symbols implements coc.Disposable {
         if (!this.disposed) {
             const request = (query: string) => this.api.client.sendRequest<coc.SymbolInformation[]>("workspace/symbol", { query }).then(r => r ?? [], () => undefined);
             const [beans, mappings] = await Promise.all([request("@+"), request("@/")]);
+            this.requestFailed = beans === undefined || mappings === undefined;
             const nextBeans: StaticBean[] = beans === undefined ? this.beans : beans.filter(s => s.name.startsWith("@+")).map(s => new StaticBean(s.location, s.name));
             const nextMappings: StaticEndpoint[] = mappings === undefined ? this.mappings : mappings.filter(s => s.name.startsWith("@/")).map(s => new StaticEndpoint(s.location, s.name));
             const lost: boolean = nextBeans.length + nextMappings.length === 0 && this.beans.length + this.mappings.length > 0;

@@ -164,13 +164,13 @@ export function registerBeans(d: Dashboard): BeansView {
     const view = registerView(d, "spring.beans", "SPRING BEANS", provider, true);
     d.finders.set("spring.beans", (key: string) => provider.find(key));
     d.context.subscriptions.push(
-        coc.commands.registerCommand("spring.dashboard.bean.navigate", (arg?: BeansElement | string) => provider.navigate(arg)),
-        coc.commands.registerCommand("spring.dashboard.bean.open", (arg?: BeansElement | string) => provider.navigate(arg)),
-        coc.commands.registerCommand("spring.dashboard.bean.showAll", () => provider.setDefinedOnly(false)),
-        coc.commands.registerCommand("spring.dashboard.bean.showDefined", () => provider.setDefinedOnly(true)),
-        coc.commands.registerCommand("spring.dashboard.bean.showDependencies", (arg?: BeansElement | string) => provider.dependencies(arg)),
-        coc.commands.registerCommand("spring.dashboard.bean.showInjectedInto", (arg?: BeansElement | string) => provider.injectedInto(arg)),
-        coc.commands.registerCommand("spring.dashboard.bean.showHierarchy", (arg?: BeansElement | string) => provider.hierarchy(arg)),
+        coc.commands.registerCommand("spring.dashboard.bean.navigate", (arg?: BeansElement | string) => provider.navigate(arg), undefined, true),
+        coc.commands.registerCommand("spring.dashboard.bean.open", (arg?: BeansElement | string) => provider.navigate(arg), undefined, true),
+        coc.commands.registerCommand("spring.dashboard.bean.showAll", () => provider.setDefinedOnly(false), undefined, true),
+        coc.commands.registerCommand("spring.dashboard.bean.showDefined", () => provider.setDefinedOnly(true), undefined, true),
+        coc.commands.registerCommand("spring.dashboard.bean.showDependencies", (arg?: BeansElement | string) => provider.dependencies(arg), undefined, true),
+        coc.commands.registerCommand("spring.dashboard.bean.showInjectedInto", (arg?: BeansElement | string) => provider.injectedInto(arg), undefined, true),
+        coc.commands.registerCommand("spring.dashboard.bean.showHierarchy", (arg?: BeansElement | string) => provider.hierarchy(arg), undefined, true),
         coc.commands.registerCommand("spring.beans.find", () => findInView(view)),
     );
     return provider;

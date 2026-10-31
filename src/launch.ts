@@ -7,73 +7,59 @@ export interface LaunchTarget {
     name: string;
     mainClass: string;
     projectName: string;
+    /** The project folder, the working directory of the JVM. */
+    path: string;
 }
 
 /**
- * The java launch configuration of an app, the same one upstream hands to vscode-java-debug.
+ * How a launch differs from the remembered settings: profiles that replace them, or the panel opened with the profiles.
  */
-export interface LaunchConfig {
-    type: "java";
-    name: string;
-    request: "launch";
-    mainClass: string;
-    projectName: string;
-    vmArgs: string;
+export interface LaunchOptions {
+    profile?: string;
+    pickProfiles?: boolean;
 }
+
+/**
+ * Where an app is in its life, as far as the dashboard started it.
+ */
+export type AppState = "starting" | "waiting" | "running" | "debugging" | "stopped";
 
 /**
  * Starts, debugs and stops the apps. Every command, tree action and app state goes through it.
  */
 export interface AppLauncher {
-    run(app: LaunchTarget, profile?: string): Promise<string>;
-    debug(app: LaunchTarget, profile?: string): Promise<string>;
-    stop(app: LaunchTarget): Promise<string>;
-}
-
-const JMX_ARGS: string[] = [
-    "-Dspring.jmx.enabled=true",
-    "-Dmanagement.endpoints.jmx.exposure.include=*",
-];
-
-/**
- * Builds the launch configuration of an app. JMX is always enabled so that the live data of the language server can
- * connect to it, a profile becomes the active spring profile.
- */
-export function buildLaunchConfig(app: LaunchTarget, profile?: string): LaunchConfig {
-    const vmArgs: string[] = [...JMX_ARGS];
-    if (profile && profile.trim().length > 0) {
-        vmArgs.push(`-Dspring.profiles.active=${profile.trim()}`);
-    }
-    return {
-        type: "java",
-        name: `Spring Boot-${app.name}`,
-        request: "launch",
-        mainClass: app.mainClass,
-        projectName: app.projectName,
-        vmArgs: vmArgs.join(" "),
-    };
+    readonly onDidChangeState: coc.Event<void>;
+    run(app: LaunchTarget, options?: LaunchOptions): Promise<string>;
+    debug(app: LaunchTarget, options?: LaunchOptions): Promise<string>;
+    /** Opens the launch settings panel of an app without launching. */
+    configure(app: LaunchTarget): Promise<string>;
+    /** Switches to the output tab of an app. */
+    showOutput(app: LaunchTarget): Promise<string>;
+    /** Whether the app has an output tab, the one of its last run. */
+    hasOutput(app: LaunchTarget): Promise<boolean>;
+    /** Attaches the debugger to an app that was started with run. */
+    attach(app: LaunchTarget): Promise<string>;
+    /** Stops an app, `pid` is the process of an app the dashboard did not start. */
+    stop(app: LaunchTarget, pid?: number): Promise<string>;
+    state(app: LaunchTarget): AppState;
+    /** The pid of the JVM the dashboard started for the app. */
+    pidOf(app: LaunchTarget): number | undefined;
 }
 
 /**
- * The launcher until running and debugging is implemented: every operation only says so.
+ * The JMX setup the spring boot language server connects through, the same set upstream adds to every launch: a remote
+ * JMX port without authentication on localhost, spring's JMX beans and admin endpoint, and the project name.
  */
-export class PlaceholderLauncher implements AppLauncher {
-
-    public async run(_app: LaunchTarget, _profile?: string): Promise<string> {
-        return this.notImplemented("Run");
-    }
-
-    public async debug(_app: LaunchTarget, _profile?: string): Promise<string> {
-        return this.notImplemented("Debug");
-    }
-
-    public async stop(_app: LaunchTarget): Promise<string> {
-        return this.notImplemented("Stop");
-    }
-
-    private notImplemented(operation: string): string {
-        const message: string = `${operation} is not implemented yet`;
-        coc.window.showWarningMessage(message);
-        return message;
-    }
+export function jmxArgs(projectName: string, jmxPort: number): string[] {
+    return [
+        "-Dcom.sun.management.jmxremote",
+        `-Dcom.sun.management.jmxremote.port=${jmxPort}`,
+        "-Dcom.sun.management.jmxremote.authenticate=false",
+        "-Dcom.sun.management.jmxremote.ssl=false",
+        "-Djava.rmi.server.hostname=localhost",
+        "-Dspring.jmx.enabled=true",
+        "-Dspring.application.admin.enabled=true",
+        "-Dmanagement.endpoints.jmx.exposure.include=*",
+        `-Dspring.boot.project.name=${projectName}`,
+    ];
 }

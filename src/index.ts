@@ -1,8 +1,8 @@
 import * as coc from "coc.nvim";
 import { AppsView, registerApps } from "./apps";
 import { Dashboard } from "./dashboard";
-import { PlaceholderLauncher } from "./launch";
-import { failed, LiveData } from "./live";
+import { TerminalLauncher } from "./launcher";
+import { LiveData } from "./live";
 import { waitForStsApi } from "./sts";
 import { Symbols } from "./symbols";
 import { registerBeans } from "./views/beans";
@@ -12,6 +12,7 @@ import { registerMemory } from "./views/memory";
 import { registerGutter } from "./gutter";
 import { registerRemote } from "./remote";
 import { registerHelp } from "./help";
+import { failed } from "./util";
 
 export async function activate(context: coc.ExtensionContext): Promise<void> {
     await registerHelp(context).catch(e => failed("help page", e, undefined));
@@ -28,11 +29,11 @@ async function start(context: coc.ExtensionContext): Promise<void> {
     } else {
         const live = new LiveData(api);
         const symbols = new Symbols(api);
-        const d: Dashboard = { context, api, live, symbols, apps: new AppsView(live, new PlaceholderLauncher()), views: new Map(), finders: new Map() };
+        const d: Dashboard = { context, api, live, symbols, apps: new AppsView(live, new TerminalLauncher(context)), views: new Map(), finders: new Map() };
         context.subscriptions.push(live, symbols);
         registerApps(d);
         registerBeans(d);
-        context.subscriptions.push(coc.commands.registerCommand("spring.staticData.refresh", () => d.symbols.refresh()));
+        context.subscriptions.push(coc.commands.registerCommand("spring.staticData.refresh", () => d.symbols.refresh(true)));
         registerMappings(d);
         registerProperties(d);
         registerMemory(d);

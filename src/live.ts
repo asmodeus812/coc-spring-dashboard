@@ -1,17 +1,6 @@
 import * as coc from "coc.nvim";
 import { LiveProcess, StsApi, mainClassOf } from "./sts";
-
-let channel: coc.OutputChannel | undefined;
-
-/**
- * Logs a failed live request to the "Spring Dashboard" output channel and answers the fallback, so the views keep
- * their last data and no notification is raised.
- */
-export function failed<T>(request: string, error: unknown, fallback: T): T {
-    channel = channel ?? coc.window.createOutputChannel("Spring Dashboard");
-    channel.appendLine(`[${new Date().toISOString()}] ${request} failed: ${error instanceof Error ? error.message : String(error)}`);
-    return fallback;
-}
+import { failed } from "./util";
 
 export interface PropertyGroup {
     name: string;
@@ -31,6 +20,9 @@ export interface LiveApp {
     properties?: PropertyGroup[];
 }
 
+const RELOAD_ATTEMPTS = 20;
+const RELOAD_DELAY_MS = 3000;
+
 /**
  * The live data of all connected processes, kept up to date from the live process events of coc-springboot.
  */
@@ -39,6 +31,7 @@ export class LiveData implements coc.Disposable {
     private readonly emitter = new coc.Emitter<LiveApp | undefined>();
     public readonly onDidChange: coc.Event<LiveApp | undefined> = this.emitter.event;
     private readonly disposables: coc.Disposable[] = [];
+    private readonly reloads: Map<string, number> = new Map();
 
     constructor(public readonly api: StsApi) {
         this.disposables.push(
@@ -53,13 +46,28 @@ export class LiveData implements coc.Disposable {
         await Promise.all(processes.map(p => this.load(p)));
     }
 
-    public async refresh(): Promise<void> {
-        await Promise.all([...this.apps.values()].map(a => this.api.refreshLiveProcessData({ processKey: a.process.processKey, endpoint: "beans" }).catch(e => failed(`refresh ${a.process.processKey}`, e, undefined))));
-        await this.init();
+    /**
+     * Refreshes the live data of every connected app, `report` tells the user when there is none or a refresh fails.
+     */
+    public async refresh(report: boolean = false): Promise<void> {
+        if (report && this.apps.size === 0) {
+            coc.window.showWarningMessage("No connected app to refresh, run an app or connect a remote one");
+        } else {
+            let errors: number = 0;
+            await Promise.all([...this.apps.values()].map(a => this.api.refreshLiveProcessData({ processKey: a.process.processKey, endpoint: "beans" }).catch(e => { errors++; return failed(`refresh ${a.process.processKey}`, e, undefined); })));
+            await this.init();
+            if (report && errors > 0) {
+                coc.window.showErrorMessage(`Spring Boot Dashboard: the live data of ${errors} app${errors === 1 ? "" : "s"} could not be refreshed, see the Spring Dashboard output`);
+            }
+        }
     }
 
     public byMainClass(mainClass: string): LiveApp | undefined {
         return [...this.apps.values()].find(a => a.mainClass === mainClass);
+    }
+
+    public byPid(pid: number): LiveApp | undefined {
+        return [...this.apps.values()].find(a => a.process.pid === String(pid));
     }
 
     public async properties(app: LiveApp): Promise<PropertyGroup[]> {
@@ -99,10 +107,36 @@ export class LiveData implements coc.Disposable {
         };
         this.apps.set(process.processKey, app);
         this.emitter.fire(app);
+        if (app.port === undefined) {
+            this.reloadLater(process);
+        } else {
+            this.reloads.delete(process.processKey);
+        }
+    }
+
+    /**
+     * A process connected a moment ago has not gathered its live data yet, its port comes back empty and no update
+     * follows on its own: the data is refreshed and loaded again for a while, until the port is there or the process is
+     * gone.
+     */
+    private reloadLater(process: LiveProcess): void {
+        const attempts: number = (this.reloads.get(process.processKey) ?? 0) + 1;
+        if (attempts <= RELOAD_ATTEMPTS) {
+            this.reloads.set(process.processKey, attempts);
+            setTimeout(async () => {
+                if (this.apps.has(process.processKey)) {
+                    await this.api.refreshLiveProcessData({ processKey: process.processKey, endpoint: "port" }).catch(e => failed(`refresh ${process.processKey}`, e, undefined));
+                    await this.load(process);
+                }
+            }, RELOAD_DELAY_MS);
+        } else {
+            this.reloads.delete(process.processKey);
+        }
     }
 
     private remove(process: LiveProcess): void {
         this.apps.delete(process.processKey);
+        this.reloads.delete(process.processKey);
         this.emitter.fire(undefined);
     }
 

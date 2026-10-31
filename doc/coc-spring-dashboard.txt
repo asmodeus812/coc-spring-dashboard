@@ -35,7 +35,7 @@ coc-spring-dashboard defines no key mappings. You use it through
 QUICKSTART                                   *coc-spring-dashboard-quickstart*
 
 Open the apps tree and the beans tree: >vim
-    :CocCommand spring-boot-dashboard.apps.show
+    :CocCommand spring.apps.focus
     :CocCommand spring.beans.focus
 <
 Every tree opens in a vertical split on the right. Press `<CR>` on a bean to
@@ -79,8 +79,7 @@ VIEWS                                             *coc-spring-dashboard-views*
 Each view has a command that opens it, or moves to it when it is open.
 
   View                       Command ~
-  SPRING APPS                `spring-boot-dashboard.apps.show`
-                             `spring.apps.focus`
+  SPRING APPS                `spring.apps.focus`
   SPRING BEANS               `spring.beans.focus`
   SPRING ENDPOINT MAPPINGS   `spring.mappings.focus`
   SPRING PROPERTIES          `spring.properties.focus`
@@ -89,20 +88,99 @@ Each view has a command that opens it, or moves to it when it is open.
 ------------------------------------------------------------------------------
 APPS                                               *coc-spring-dashboard-apps*
 
-One line per Spring Boot app of the workspace. A running app has `●` and the
-description `running :8080` with its port; a stopped app has `○` and the
-description `stopped`. The tooltip shows the main class.
+One line per Spring Boot app of the workspace. The icon and description show
+the state of the app:
 
-`spring-boot-dashboard.refresh` reloads the list of apps.
+  `○` stopped             not running
+  `◐` starting            the JVM is being started
+  `◐` waiting for debugger  Debug started the JVM, it waits for the debugger
+  `●` running             running; `running :8080` shows the port when live
+                        data is connected, also for apps started outside
+  `◉` debugging           a debugger is attached
 
-Run, Debug and Stop are not implemented yet; their actions and commands
-show a message |coc-spring-dashboard-messages|. The profile variants ask for
-"Active profiles (comma separated)" first. The commands:
+The tooltip shows the main class. `spring-boot-dashboard.refresh` reloads
+the list of apps.
+
+Run, Debug and Stop are real. Run and Debug open the launch panel, one
+quick pick per app with the action first and the settings below it: >
+    Debug bootlab
+    > Debug with these settings
+      Profiles       dev, local
+      Server port    default
+      Logging        INFO (debug report: off)
+      JVM options    -Xmx512m
+      Program args   none
+      Environment    DB_URL=...
+      Reset to defaults
+<
+Picking a setting edits it and returns to the panel, the action launches and
+`<Esc>` cancels. The settings are remembered per app (kept per workspace);
+until then they come from `spring.dashboard.apps`.
+
+  Profiles        a multi-select of the profiles found like upstream does:
+                  the `application-<p>` and `bootstrap-<p>` files (properties,
+                  yml, yaml) in the source folders of the project and their
+                  `config` subfolders. Profiles typed before are offered
+                  again, "Type another profile..." adds new ones. Passed as
+                  `-Dspring.profiles.active=a,b`.
+  Server port     "App default" passes nothing, "Random (0)", or a number;
+                  passed as `-Dserver.port=N`. Spring config files are not
+                  read for it.
+  Logging         the root level (`-Dlogging.level.root`), per package levels
+                  such as `com.example=DEBUG` (`-Dlogging.level.<pkg>`) and
+                  the `--debug` auto-configuration report.
+  JVM options     free text, e.g. `-Xmx512m -Dfoo=bar`.
+  Program args    free text.
+  Environment     `KEY=VALUE` pairs for the JVM.
+
+`spring.dashboard.launch.prompt` says when the panel opens: `first` (default,
+the first time per app, then the remembered settings are used), `always` or
+`never`. The "with profile" variants open the panel with the profiles list
+already open (also with `never`); a profile given as argument skips it.
+"Launch settings..." in the tree actions and
+`spring-boot-dashboard.localapp.settings` open the panel without launching.
+
+The app starts as a JVM named "Spring: <app>", with the JMX arguments the
+live data needs added for you. The classpath comes from the Java language
+server and is passed in an argument file in the storage folder of the
+extension. The output, colors and input are in an output tab per app, created
+at the end of the tab line, with the working directory set to the project
+(`:tcd`). Running again reuses the tab. The focus stays where it was, unless
+`spring.dashboard.launch.focusOutput` is on; "Show output" in the tree
+actions and `spring-boot-dashboard.localapp.output` switch to the tab.
+Debug starts the JVM suspended, so that breakpoints in the startup code are
+hit, and attaches the debugger. Debugging needs nvim-dap (Neovim) or
+vimspector (Vim and Neovim, Python 3); without them Debug says so, Run still
+works. vimspector opens its own debug tab, needs no .vimspector.json, and
+counts as attached until its session is reset. If no debugger attaches
+within `spring.dashboard.debug.attachTimeout` seconds the JVM is killed.
+Ending the debug session in the debugger only detaches, the app keeps
+running.
+
+Defaults per app name, by the name shown in the tree: >json
+    "spring.dashboard.apps": {
+        "my-app": { "vmArgs": "-Xmx512m", "args": "--debug", "profiles": ["dev"] }
+    }
+<
+Keys: `profiles`, `port`, `logLevel`, `logPackages`, `debugReport`, `vmArgs`,
+`args`, `env`.
+
+Stop sends SIGTERM, so that Spring shuts down cleanly, and SIGKILL when the
+process is still there after `spring.dashboard.stop.gracePeriod` seconds. It
+also stops an app that was started outside the dashboard, by the pid of its
+live process. The live process of a dashboard app is paired by pid, other
+apps by their main class.
+
+Attach debugger, on an app started with Run, attaches the debugger later;
+breakpoints hit from then on. The commands:
 
   `spring-boot-dashboard.localapp.run`
   `spring-boot-dashboard.localapp.runWithProfile`
   `spring-boot-dashboard.localapp.debug`
   `spring-boot-dashboard.localapp.debugWithProfile`
+  `spring-boot-dashboard.localapp.settings`
+  `spring-boot-dashboard.localapp.output`
+  `spring-boot-dashboard.localapp.attach`
   `spring-boot-dashboard.localapp.stop`
   `spring-boot-dashboard.localapp.run-multiple`
   `spring-boot-dashboard.localapp.debug-multiple`
@@ -176,8 +254,9 @@ Press the actions key of the tree (`<Tab>` by default) on a line to get a
 menu of what you can do with it:
 
   Line             Actions ~
-  app              Run, Run with profile, Debug, Debug with profile, Stop,
-                   Open in browser (running apps only)
+  app              Run, Run with profile, Debug, Debug with profile,
+                   Launch settings..., Show output, Stop, Attach debugger
+                   (started with Run), Open in browser (running apps only)
   bean             Go to definition (beans with source), Show
                    dependencies, Show injected into, Show hierarchy
   mapping          Go to definition (mappings with source), Open in
@@ -283,10 +362,24 @@ MESSAGES                                       *coc-spring-dashboard-messages*
     The dashboard failed to start, the error follows. See the output
     channel: `:CocCommand workspace.showOutput Spring Dashboard`.
 
-"Run is not implemented yet"
-"Debug is not implemented yet"
-"Stop is not implemented yet"
-    Start the app another way; the dashboard picks it up once it runs.
+"No supported debugger found, Debug needs nvim-dap or vimspector"
+    Debug and Attach debugger need nvim-dap in Neovim, or vimspector. Install
+    one, or use Run.
+
+"no debugger attached within N seconds"
+    The debugger did not attach in `spring.dashboard.debug.attachTimeout`
+    seconds, the app was stopped. Raise the setting.
+
+"... did not start: ..."
+    The JVM could not be started, the reason follows; usually the language
+    server has not finished importing the project.
+
+"... is already running", "... is not running"
+    Run and Debug need a stopped app, Stop and Attach debugger a running
+    one.
+
+"... was not started by the dashboard with Run"
+    Attach debugger works on an app that Run started.
 
 "The app of ... is not running"
     Open in browser on a mapping needs the app to run. Start it and
@@ -299,5 +392,35 @@ MESSAGES                                       *coc-spring-dashboard-messages*
 "No remote apps to connect, add them to boot-java.remote-apps"
     `boot-java.remote-apps` is empty, or every app in it is already
     connected. |coc-spring-dashboard-remote|
+
+"No Spring Boot app found in the workspace"
+    `spring-boot-dashboard.refresh` or an app command found no main class
+    with `@SpringBootApplication`. Open a Java file of the project and wait
+    for the language server to finish importing it.
+
+"Every app is running already", "No running app"
+    Run and Debug need a stopped app, Stop, Open in browser and their
+    `-multiple` commands a running one; there is nothing to pick.
+
+"... has no live data yet, wait until it is connected"
+    Open in browser needs the live data of the app, which connects a few
+    seconds after the start.
+
+"Started ...", "Stopping ...", "Launch settings of ... saved", "Connecting ...",
+"Disconnected ..."
+    A short notice for a change that is not on screen: the apps view is
+    closed (and, for Run, `spring.dashboard.launch.focusOutput` is off).
+
+"No connected app to refresh, run an app or connect a remote one"
+    `spring.dashboard.livedata.refresh` has no connected app to refresh.
+
+"Spring Boot Dashboard: could not ..."
+    The apps could not be resolved, the beans and endpoints could not be
+    loaded, a live refresh failed or an app did not accept the stop signal.
+    The language server may still be starting; the reason follows or is in
+    the Spring Dashboard output channel.
+
+"No connected remote app to disconnect"
+    `spring.remoteApp.disconnect` has no connected remote app.
 
  vim:tw=78:ts=8:noet:ft=help:norl:

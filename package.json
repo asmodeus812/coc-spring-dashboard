@@ -1,6 +1,6 @@
 {
     "name": "coc-spring-dashboard",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "Spring Boot dashboard for coc.nvim",
     "author": "Svetlozar Iliev <svetlozar321@gmail.com>",
     "license": "MIT",
@@ -56,188 +56,265 @@
                     ],
                     "default": "on",
                     "description": "Signs on the bean definitions and request mappings"
+                },
+                "spring.dashboard.debug.attachTimeout": {
+                    "type": "number",
+                    "default": 30,
+                    "description": "Seconds to wait for a debugger to attach to a debugged app, the app is killed after that"
+                },
+                "spring.dashboard.stop.gracePeriod": {
+                    "type": "number",
+                    "default": 10,
+                    "description": "Seconds an app gets to shut down after Stop (SIGTERM) before it is killed (SIGKILL)"
+                },
+                "spring.dashboard.launch.prompt": {
+                    "type": "string",
+                    "enum": [
+                        "first",
+                        "always",
+                        "never"
+                    ],
+                    "default": "first",
+                    "description": "When the launch panel opens: the first time per app (then the remembered settings are used), every time, or never"
+                },
+                "spring.dashboard.launch.focusOutput": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Switch to the output tab of an app when it is started"
+                },
+                "spring.dashboard.apps": {
+                    "type": "object",
+                    "default": {},
+                    "description": "Default launch settings per app name, used until the launch panel remembers others: { \"my-app\": { \"profiles\": [\"dev\"], \"port\": \"0\", \"logLevel\": \"INFO\", \"logPackages\": \"com.example=DEBUG\", \"debugReport\": false, \"vmArgs\": \"-Xmx512m\", \"args\": \"\", \"env\": \"KEY=VALUE\" } }",
+                    "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                            "profiles": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "port": {
+                                "type": "string"
+                            },
+                            "logLevel": {
+                                "type": "string"
+                            },
+                            "logPackages": {
+                                "type": "string"
+                            },
+                            "debugReport": {
+                                "type": "boolean"
+                            },
+                            "vmArgs": {
+                                "type": "string"
+                            },
+                            "args": {
+                                "type": "string"
+                            },
+                            "env": {
+                                "type": "string"
+                            }
+                        }
+                    }
                 }
             }
         },
         "commands": [
             {
                 "command": "spring-boot-dashboard.apps.show",
-                "title": "Apps show",
+                "title": "Show the apps view",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring-boot-dashboard.refresh",
-                "title": "Refresh",
+                "title": "Refresh the apps",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring-boot-dashboard.localapp.run",
-                "title": "Localapp run",
+                "title": "Run app",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring-boot-dashboard.localapp.runWithProfile",
-                "title": "Localapp run with profile",
+                "title": "Run app with profiles",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring-boot-dashboard.localapp.debug",
-                "title": "Localapp debug",
+                "title": "Debug app",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring-boot-dashboard.localapp.debugWithProfile",
-                "title": "Localapp debug with profile",
+                "title": "Debug app with profiles",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring-boot-dashboard.localapp.settings",
+                "title": "Edit the launch settings of an app",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring-boot-dashboard.localapp.output",
+                "title": "Show the output of an app",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring-boot-dashboard.localapp.attach",
+                "title": "Attach the debugger to a running app",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring-boot-dashboard.localapp.stop",
-                "title": "Localapp stop",
+                "title": "Stop app",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring-boot-dashboard.localapp.open",
-                "title": "Localapp open",
+                "title": "Open a running app in the browser",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring-boot-dashboard.localapp.run-multiple",
-                "title": "Localapp run multiple",
+                "title": "Run several apps",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring-boot-dashboard.localapp.debug-multiple",
-                "title": "Localapp debug multiple",
+                "title": "Debug several apps",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring-boot-dashboard.localapp.stop-multiple",
-                "title": "Localapp stop multiple",
+                "title": "Stop several apps",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.dashboard.livedata.refresh",
-                "title": "Dashboard livedata refresh",
+                "title": "Refresh the live data",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.apps.focus",
-                "title": "Apps focus",
+                "title": "Focus the apps view",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.dashboard.bean.navigate",
-                "title": "Dashboard bean navigate",
+                "title": "Go to the bean",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.dashboard.bean.open",
-                "title": "Dashboard bean open",
+                "title": "Open the bean",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.dashboard.bean.showAll",
-                "title": "Dashboard bean show all",
+                "title": "Show all beans",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.dashboard.bean.showDefined",
-                "title": "Dashboard bean show defined",
+                "title": "Show only the beans defined in the workspace",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.dashboard.bean.showDependencies",
-                "title": "Dashboard bean show dependencies",
+                "title": "Show the dependencies of the bean",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.dashboard.bean.showInjectedInto",
-                "title": "Dashboard bean show injected into",
+                "title": "Show where the bean is injected",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.dashboard.bean.showHierarchy",
-                "title": "Dashboard bean show hierarchy",
+                "title": "Show the hierarchy of the bean",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.beans.find",
-                "title": "Beans find",
+                "title": "Find a bean",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.staticData.refresh",
-                "title": "Static data refresh",
+                "title": "Refresh the beans and mappings of the workspace",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.beans.focus",
-                "title": "Beans focus",
+                "title": "Focus the beans view",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.dashboard.endpoint.navigate",
-                "title": "Dashboard endpoint navigate",
+                "title": "Go to the endpoint",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.dashboard.endpoint.open",
-                "title": "Dashboard endpoint open",
+                "title": "Open the endpoint in the browser",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.dashboard.mapping.showAll",
-                "title": "Dashboard mapping show all",
+                "title": "Show all mappings",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.dashboard.mapping.showDefined",
-                "title": "Dashboard mapping show defined",
+                "title": "Show only the mappings defined in the workspace",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.mappings.find",
-                "title": "Mappings find",
+                "title": "Find a mapping",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.mappings.focus",
-                "title": "Mappings focus",
+                "title": "Focus the mappings view",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.properties.find",
-                "title": "Properties find",
+                "title": "Find a property",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.properties.focus",
-                "title": "Properties focus",
+                "title": "Focus the properties view",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.dashboard.memory.poll",
-                "title": "Dashboard memory poll",
+                "title": "Poll the memory of the live apps",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.memoryView.focus",
-                "title": "Memory view focus",
+                "title": "Focus the memory view",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.dashboard.showUnderCursor",
-                "title": "Dashboard show under cursor",
+                "title": "Show the bean or endpoint under the cursor",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.remoteApp.connect",
-                "title": "Remote app connect",
+                "title": "Connect a remote app",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring.remoteApp.disconnect",
-                "title": "Remote app disconnect",
+                "title": "Disconnect a remote app",
                 "category": "Spring Boot Dashboard"
             }
         ]
