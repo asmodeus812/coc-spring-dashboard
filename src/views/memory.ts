@@ -147,7 +147,7 @@ export class MemoryView implements coc.TreeDataProvider<MemoryElement>, coc.Disp
 
 export function registerMemory(d: Dashboard): MemoryView {
     const provider = new MemoryView(d);
-    registerView(d, "spring.memoryView", "SPRING MEMORY", provider);
-    d.context.subscriptions.push(provider, coc.commands.registerCommand("spring.dashboard.memory.poll", () => provider.poll(), undefined, true));
+    registerView(d, "spring.memoryView", "SPRING MEMORY", provider, { component: "memory" });
+    d.context.subscriptions.push(provider);
     return provider;
 }

@@ -80,7 +80,7 @@ export class TerminalLauncher implements AppLauncher {
         let shown: boolean = await this.output.focus(app.mainClass);
         const bufnr: number | undefined = shown ? undefined : await this.terminalOf(app);
         if (bufnr !== undefined) {
-            await this.output.show({ key: app.mainClass, name: app.name, folder: app.path }, bufnr, { focus: true });
+            await this.output.show({ key: app.mainClass, name: app.name, folder: app.path }, bufnr);
             shown = true;
         }
         let message: string;
@@ -132,6 +132,10 @@ export class TerminalLauncher implements AppLauncher {
             if (given) {
                 await this.attachPanel.remember(settings);
             }
+            // the tab first: the debugger finds the source window of the attach through it
+            const project: AttachProject | undefined = projects.find(p => p.name === settings.project);
+            const tab: TabApp = { key: attachKey(settings.project), name: settings.project, folder: project?.path ?? coc.workspace.root };
+            await this.output.showViews(tab, await this.output.origin());
             const messages: string[] = [];
             const debug = settings.debugPort !== "" ? await this.attachDebugger(settings) : undefined;
             if (debug !== undefined) {
@@ -140,10 +144,6 @@ export class TerminalLauncher implements AppLauncher {
             if (settings.jmxPort !== "") {
                 messages.push((await this.attachLive(settings)).message);
             }
-            const debuggerAttached: boolean = debug?.ok === true;
-            const project: AttachProject | undefined = projects.find(p => p.name === settings.project);
-            const tab: TabApp = { key: `attach:${settings.project}`, name: settings.project, folder: project?.path ?? coc.workspace.root };
-            await this.output.showViews(tab, { focus: !debuggerAttached, origin: await this.output.origin() });
             message = messages.join(", ");
         }
         return message;
@@ -181,7 +181,7 @@ export class TerminalLauncher implements AppLauncher {
             coc.window.showWarningMessage(message);
         } else {
             try {
-                await this.attachBackend(backend, { name: s.project, projectName: s.project, host: s.host, jdwpPort: Number(s.debugPort) });
+                await this.attachBackend(backend, { name: s.project, tab: attachKey(s.project), projectName: s.project, host: s.host, jdwpPort: Number(s.debugPort) });
                 ok = true;
                 coc.window.showInformationMessage(message);
             } catch (e) {
@@ -285,7 +285,7 @@ export class TerminalLauncher implements AppLauncher {
         session.jdwpPort = jdwpPort;
         session.pid = await terminal.processId;
         void connectLive(session, app);
-        await this.output.show({ key: app.mainClass, name: app.name, folder: app.path }, terminal.bufnr, { focus: config<boolean>("launch.focusOutput", false), origin });
+        await this.output.show({ key: app.mainClass, name: app.name, folder: app.path }, terminal.bufnr, origin);
 
         let message: string;
         if (debug && session.backend) {
@@ -305,7 +305,7 @@ export class TerminalLauncher implements AppLauncher {
         const wasWaiting: boolean = session.state === "waiting";
         let message: string;
         try {
-            const target: AttachTarget = await this.attachBackend(backend, { name: app.name, projectName: app.projectName, host: "127.0.0.1", jdwpPort });
+            const target: AttachTarget = await this.attachBackend(backend, { name: app.name, tab: app.mainClass, projectName: app.projectName, host: "127.0.0.1", jdwpPort });
             session.attached = target;
             this.setState(session, "debugging");
             this.watchDebugger(session, backend, target);
@@ -515,4 +515,11 @@ async function connectLive(session: Session, app: LaunchTarget): Promise<void> {
             await disconnectPid(pid).catch(() => undefined);
         }
     }
+}
+
+/**
+ * The key of the dashboard tab of an attached project.
+ */
+function attachKey(project: string): string {
+    return `attach:${project}`;
 }

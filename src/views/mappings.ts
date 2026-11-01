@@ -1,5 +1,4 @@
 import * as coc from "coc.nvim";
-import { BootApp } from "../apps";
 import { AppGroup, Dashboard, HintNode, NodeCache, appGroups, findInView, hintItem, hintOf, registerView, stateIcon } from "../dashboard";
 import { LiveApp } from "../live";
 import { StaticEndpoint, endpointLabel } from "../symbols";
@@ -142,14 +141,13 @@ export class MappingsView implements coc.TreeDataProvider<MappingsElement> {
 
 export function registerMappings(d: Dashboard): MappingsView {
     const provider = new MappingsView(d);
-    const view = registerView(d, "spring.mappings", "SPRING ENDPOINT MAPPINGS", provider, { filter: true });
-    d.finders.set("spring.mappings", (key: string) => provider.find(key));
+    const view = registerView(d, "spring.mappings", "SPRING ENDPOINT MAPPINGS", provider, { filter: true, component: "endpoints" });
     d.context.subscriptions.push(
         coc.commands.registerCommand("spring.dashboard.endpoint.navigate", (arg?: MappingsElement | string) => provider.navigate(arg), undefined, true),
         coc.commands.registerCommand("spring.dashboard.endpoint.open", (arg?: MappingsElement | string) => provider.open(arg), undefined, true),
         coc.commands.registerCommand("spring.dashboard.mapping.showAll", () => provider.setDefinedOnly(false), undefined, true),
         coc.commands.registerCommand("spring.dashboard.mapping.showDefined", () => provider.setDefinedOnly(true), undefined, true),
-        coc.commands.registerCommand("spring.mappings.find", () => findInView(view)),
+        coc.commands.registerCommand("spring.mappings.find", () => findInView(view), undefined, true),
     );
     return provider;
 }

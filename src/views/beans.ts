@@ -165,8 +165,7 @@ export class BeansView implements coc.TreeDataProvider<BeansElement> {
 
 export function registerBeans(d: Dashboard): BeansView {
     const provider = new BeansView(d);
-    const view = registerView(d, "spring.beans", "SPRING BEANS", provider, { filter: true });
-    d.finders.set("spring.beans", (key: string) => provider.find(key));
+    const view = registerView(d, "spring.beans", "SPRING BEANS", provider, { filter: true, component: "beans" });
     d.context.subscriptions.push(
         coc.commands.registerCommand("spring.dashboard.bean.navigate", (arg?: BeansElement | string) => provider.navigate(arg), undefined, true),
         coc.commands.registerCommand("spring.dashboard.bean.open", (arg?: BeansElement | string) => provider.navigate(arg), undefined, true),
@@ -175,7 +174,7 @@ export function registerBeans(d: Dashboard): BeansView {
         coc.commands.registerCommand("spring.dashboard.bean.showDependencies", (arg?: BeansElement | string) => provider.dependencies(arg), undefined, true),
         coc.commands.registerCommand("spring.dashboard.bean.showInjectedInto", (arg?: BeansElement | string) => provider.injectedInto(arg), undefined, true),
         coc.commands.registerCommand("spring.dashboard.bean.showHierarchy", (arg?: BeansElement | string) => provider.hierarchy(arg), undefined, true),
-        coc.commands.registerCommand("spring.beans.find", () => findInView(view)),
+        coc.commands.registerCommand("spring.beans.find", () => findInView(view), undefined, true),
     );
     return provider;
 }

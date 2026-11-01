@@ -1,4 +1,5 @@
 import * as coc from "coc.nvim";
+import { sourceWindowOf } from "./output";
 import { sleep } from "./util";
 
 /**
@@ -6,6 +7,8 @@ import { sleep } from "./util";
  */
 export interface AttachTarget {
     name: string;
+    /** The key of the app's dashboard tab: a stop shows its line in the source window of that app. */
+    tab: string;
     projectName: string;
     adapterPort: number;
     /** The host of the JVM. */
@@ -41,6 +44,10 @@ class NvimDapBackend implements DebugBackend {
             `local adapter, target = ...
             local dap = require('dap')
             dap.adapters[adapter] = { type = 'server', host = '127.0.0.1', port = target.adapterPort }
+            -- where a stop shows its line: the source window of the app, only for this adapter
+            dap.defaults[adapter].switchbuf = function(bufnr, line, column)
+                vim.fn.CocActionAsync('runCommand', 'spring-boot-dashboard.source.open', target.tab, vim.uri_from_bufnr(bufnr), line, column)
+            end
             dap.run({ type = adapter, request = 'attach', name = adapter, hostName = target.host, port = target.jdwpPort, projectName = target.projectName })`,
             [adapter, target as any],
         );
@@ -85,8 +92,11 @@ class VimspectorBackend implements DebugBackend {
         const nvim = coc.workspace.nvim;
         const name: string = `spring-${target.name}`;
         const before: number = await this.endedCount();
-        // vimspector reads the path of the current buffer, a window of a plain file buffer has to be current
-        await nvim.command("silent! wincmd p");
+        // vimspector reads the path of the current buffer, a window of a file has to be current
+        const source: number | undefined = await sourceWindowOf(target.tab);
+        if (source !== undefined) {
+            await nvim.call("win_gotoid", [source]);
+        }
         // literal values only, vimspector expands ${...} in both dicts
         await nvim.call("vimspector#LaunchWithConfigurations", [{
             [name]: {

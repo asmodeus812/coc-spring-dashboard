@@ -153,7 +153,7 @@ export class LaunchPanel {
         let result: LaunchSettings | undefined = undefined;
         let done: boolean = false;
         while (!done) {
-            const picked = await coc.window.showQuickPick([{ label: `▶ ${action} with these settings`, key: "go" }, ...this.rows(app, settings)], { title: action === "Save" ? `Launch settings ${app.name}` : `${action} ${app.name}` });
+            const picked = await coc.window.showQuickPick([{ label: `▶ ${action} with these settings`, key: "go" }, ...this.rows(settings)], { title: action === "Save" ? `Launch settings ${app.name}` : `${action} ${app.name}` });
             if (picked === undefined) {
                 done = true;
             } else if (picked.key === "go") {
@@ -167,7 +167,7 @@ export class LaunchPanel {
         return result;
     }
 
-    private rows(app: LaunchTarget, s: LaunchSettings): Row[] {
+    private rows(s: LaunchSettings): Row[] {
         const row = (name: string, value: string, key: string): Row => ({ label: `  ${name.padEnd(15)}${value}`, key });
         const port: string = s.port === "" ? "default" : (s.port === "0" ? "random (0)" : s.port);
         return [

@@ -67,7 +67,7 @@ export class PropertiesView implements coc.TreeDataProvider<PropertiesElement> {
 
 export function registerProperties(d: Dashboard): PropertiesView {
     const provider = new PropertiesView(d);
-    const view = registerView(d, "spring.properties", "SPRING PROPERTIES", provider, { filter: true });
-    d.context.subscriptions.push(coc.commands.registerCommand("spring.properties.find", () => findInView(view)));
+    const view = registerView(d, "spring.properties", "SPRING PROPERTIES", provider, { filter: true, component: "properties" });
+    d.context.subscriptions.push(coc.commands.registerCommand("spring.properties.find", () => findInView(view), undefined, true));
     return provider;
 }

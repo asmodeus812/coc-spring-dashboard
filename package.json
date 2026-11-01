@@ -81,17 +81,34 @@
                     "default": "always",
                     "description": "When the launch panel opens: the first time per app (then the remembered settings are used), every time (default), or never"
                 },
-                "spring.dashboard.launch.focusOutput": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Switch to the dashboard tab of an app when it is started"
-                },
                 "spring.dashboard.layout.terminalHeight": {
                     "type": "number",
                     "default": 65,
                     "minimum": 10,
                     "maximum": 90,
                     "description": "Percent of the height of an app dashboard tab given to the terminal under the views"
+                },
+                "spring.dashboard.layout.components": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "beans",
+                            "endpoints",
+                            "properties",
+                            "memory",
+                            "terminal"
+                        ]
+                    },
+                    "uniqueItems": true,
+                    "default": [
+                        "beans",
+                        "endpoints",
+                        "properties",
+                        "memory",
+                        "terminal"
+                    ],
+                    "description": "The panes of an app dashboard tab, in their fixed places: the views side by side on top, the terminal below. A left out view is not shown anywhere, a left out terminal keeps running without a window. An empty list is all of them"
                 },
                 "spring.dashboard.layout.cleanup": {
                     "type": "string",
@@ -101,6 +118,13 @@
                     ],
                     "default": "always",
                     "description": "When an app stops: close its dashboard tab (always), or keep the tab for the next run (keep)"
+                },
+                "spring.dashboard.layout.fallbackSize": {
+                    "type": "number",
+                    "default": 75,
+                    "minimum": 20,
+                    "maximum": 100,
+                    "description": "Width and height, in percent of the screen, of the float a bean, an endpoint, a relation or an nvim-dap stop opens in when the app has no source window, or there is no app"
                 },
                 "spring.dashboard.apps": {
                     "type": "object",
@@ -142,11 +166,6 @@
             }
         },
         "commands": [
-            {
-                "command": "spring-boot-dashboard.apps.show",
-                "title": "Show the apps view",
-                "category": "Spring Boot Dashboard"
-            },
             {
                 "command": "spring-boot-dashboard.refresh",
                 "title": "Refresh the apps",
@@ -258,11 +277,6 @@
                 "category": "Spring Boot Dashboard"
             },
             {
-                "command": "spring.beans.focus",
-                "title": "Focus the beans view",
-                "category": "Spring Boot Dashboard"
-            },
-            {
                 "command": "spring.dashboard.endpoint.navigate",
                 "title": "Go to the endpoint",
                 "category": "Spring Boot Dashboard"
@@ -288,33 +302,8 @@
                 "category": "Spring Boot Dashboard"
             },
             {
-                "command": "spring.mappings.focus",
-                "title": "Focus the mappings view",
-                "category": "Spring Boot Dashboard"
-            },
-            {
                 "command": "spring.properties.find",
                 "title": "Find a property",
-                "category": "Spring Boot Dashboard"
-            },
-            {
-                "command": "spring.properties.focus",
-                "title": "Focus the properties view",
-                "category": "Spring Boot Dashboard"
-            },
-            {
-                "command": "spring.dashboard.memory.poll",
-                "title": "Poll the memory of the live apps",
-                "category": "Spring Boot Dashboard"
-            },
-            {
-                "command": "spring.memoryView.focus",
-                "title": "Focus the memory view",
-                "category": "Spring Boot Dashboard"
-            },
-            {
-                "command": "spring.dashboard.showUnderCursor",
-                "title": "Show the bean or endpoint under the cursor",
                 "category": "Spring Boot Dashboard"
             },
             {

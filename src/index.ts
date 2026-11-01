@@ -1,6 +1,6 @@
 import * as coc from "coc.nvim";
 import { AppsView, registerApps } from "./apps";
-import { AppTab, Dashboard } from "./dashboard";
+import { AppTab, Dashboard, layoutViews } from "./dashboard";
 import { TerminalLauncher } from "./launcher";
 import { LiveData } from "./live";
 import { OutputTabs } from "./output";
@@ -34,7 +34,7 @@ async function start(context: coc.ExtensionContext): Promise<void> {
         const symbols = new Symbols(api);
         const tabs = new OutputTabs();
         const launcher = new TerminalLauncher(context, tabs);
-        const d: Dashboard = { context, api, live, symbols, apps: new AppsView(live, launcher), appTab: new AppTab(), views: new Map(), finders: new Map() };
+        const d: Dashboard = { context, api, live, symbols, apps: new AppsView(live, launcher), appTab: new AppTab(), views: new Map() };
         context.subscriptions.push(live, symbols);
         registerApps(d);
         registerBeans(d);
@@ -42,7 +42,7 @@ async function start(context: coc.ExtensionContext): Promise<void> {
         registerMappings(d);
         registerProperties(d);
         registerMemory(d);
-        await tabs.useViews(context, () => ["spring.beans", "spring.mappings", "spring.properties", "spring.memoryView"].flatMap(v => d.views.get(v) ?? []), name => d.appTab.set(name));
+        await tabs.useViews(context, () => layoutViews(d), name => d.appTab.set(name));
         registerGutter(d);
         registerRemote(d);
         await live.init();

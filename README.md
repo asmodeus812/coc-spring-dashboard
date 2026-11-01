@@ -71,9 +71,10 @@ Set these keys in `coc-settings.json` (`:CocConfig` opens it).
 | `spring.dashboard.debug.attachTimeout` | number | `30` | Seconds to wait for a debugger to attach; the app is killed after that. |
 | `spring.dashboard.stop.gracePeriod` | number | `10` | Seconds between Stop (SIGTERM) and the kill (SIGKILL). |
 | `spring.dashboard.launch.prompt` | string | `always` | When the launch panel opens: `always` (every Run and Debug), `first` (first time per app) or `never`. |
-| `spring.dashboard.launch.focusOutput` | boolean | `false` | Switch to the dashboard tab of an app when it is started. |
 | `spring.dashboard.layout.terminalHeight` | number | `65` | Percent (10 to 90) of the height of an app dashboard tab given to the terminal under the views. |
+| `spring.dashboard.layout.components` | array | all five | The panes of an app dashboard tab: `beans`, `endpoints`, `properties`, `memory`, `terminal`. They keep their fixed places (views side by side on top, terminal below); a left out view is not shown anywhere, a left out terminal keeps running without a window. |
 | `spring.dashboard.layout.cleanup` | string (`always`, `keep`) | `"always"` | When an app stops: close its dashboard tab, or keep it for the next run. |
+| `spring.dashboard.layout.fallbackSize` | number | `75` | Width and height, in percent of the screen, of the float a bean, an endpoint, a relation or an nvim-dap stop opens in when the app has no source window, or there is no app. |
 | `spring.dashboard.apps` | object | `{}` | Default launch settings per app name (`profiles`, `port`, `logLevel`, `logPackages`, `debugReport`, `vmArgs`, `args`, `env`), e.g. `{ "my-app": { "vmArgs": "-Xmx512m" } }`. |
 
 Connect and Disconnect (`spring.remoteApp.connect`, `spring.remoteApp.disconnect`)
@@ -93,8 +94,9 @@ options. See `:help coc-spring-dashboard-attach`.
 - Failed requests to the Spring language server are logged to the output
   channel "Spring Dashboard":
   `:CocCommand workspace.showOutput Spring Dashboard`.
-- Jumps from the views open in the window the app was started from, or the
-  first normal window of the previous tab when you are in an app tab.
+- Jumps from the views and nvim-dap stops open in the source window of the app:
+  the window Run, Debug or Attach was started from, or the first file window of
+  its tab; without one, or outside an app tab, in a float.
 - No trees, or a warning that coc-springboot or coc-java is not active:
   check `:CocList extensions` and open a Java file of the project.
 - An app stays `○ stopped` while it runs: check the actuator dependency, the

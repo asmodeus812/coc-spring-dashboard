@@ -1,11 +1,11 @@
 import * as coc from "coc.nvim";
 import * as fs from "fs";
 import * as path from "path";
-import { Dashboard, TREE_SPLIT, registerView, stateIcon } from "./dashboard";
+import { Dashboard, registerView, stateIcon } from "./dashboard";
 import { AppLauncher, AppState, AttachProject, LaunchTarget } from "./launch";
 import { LiveApp, LiveData } from "./live";
 import { need, ready, waitFor } from "./ready";
-import { command, config, failed, formatUrl, javaCommand, openUrl, projectRoot } from "./util";
+import { failed, formatUrl, javaCommand, openUrl, projectRoot } from "./util";
 
 /** Which apps a command can act on: any, the stopped ones, the running ones, the running ones without a debugger, those with a dashboard. */
 type AppFilter = "any" | "stopped" | "running" | "attachable" | "output";
@@ -160,7 +160,7 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
 
     public async run(arg?: BootApp | string, profile?: string): Promise<string | undefined> {
         const app = need("java") ? await this.resolve(arg, "stopped") : undefined;
-        return app ? this.started(app, await this.launcher.run(app, { profile })) : undefined;
+        return app ? this.launcher.run(app, { profile }) : undefined;
     }
 
     /**
@@ -168,17 +168,7 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
      */
     public async runWithProfile(arg?: BootApp | string, profile?: string): Promise<string | undefined> {
         const app = need("java") ? await this.resolve(arg, "stopped") : undefined;
-        return app ? this.started(app, await this.launcher.run(app, { profile, pickProfiles: profile === undefined })) : undefined;
-    }
-
-    /**
-     * A run in the background says it started, when neither the apps view nor the dashboard show it.
-     */
-    private started(app: BootApp, result: string): string {
-        if (this.stateOf(app) === "running" && !config<boolean>("launch.focusOutput", false)) {
-            this.notify(`Started ${app.name}`);
-        }
-        return result;
+        return app ? this.launcher.run(app, { profile, pickProfiles: profile === undefined }) : undefined;
     }
 
     public async debug(arg?: BootApp | string, profile?: string): Promise<string | undefined> {
@@ -306,7 +296,6 @@ export function registerApps(d: Dashboard): AppsView {
     d.live.onScreen = () => [...d.views.values()].some(v => v.visible);
     const id = (name: string) => `spring-boot-dashboard.${name}`;
     d.context.subscriptions.push(
-        coc.commands.registerCommand(id("apps.show"), () => view.show(TREE_SPLIT), undefined, true),
         coc.commands.registerCommand(id("refresh"), () => provider.refresh(true)),
         coc.commands.registerCommand(id("localapp.run"), (arg?: BootApp | string, profile?: string) => provider.run(arg, profile)),
         coc.commands.registerCommand(id("localapp.runWithProfile"), (arg?: BootApp | string, profile?: string) => provider.runWithProfile(arg, profile), undefined, true),
@@ -314,7 +303,6 @@ export function registerApps(d: Dashboard): AppsView {
         coc.commands.registerCommand(id("localapp.debugWithProfile"), (arg?: BootApp | string, profile?: string) => provider.debugWithProfile(arg, profile), undefined, true),
         coc.commands.registerCommand(id("localapp.settings"), (arg?: BootApp | string) => provider.settings(arg)),
         coc.commands.registerCommand(id("localapp.dashboard"), (arg?: BootApp | string) => provider.output(arg)),
-        coc.commands.registerCommand(id("localapp.output"), (arg?: BootApp | string) => provider.output(arg), undefined, true),
         coc.commands.registerCommand(id("localapp.attach"), (arg?: BootApp | string) => provider.attach(arg)),
         coc.commands.registerCommand(id("attach"), (host?: string, jmxPort?: string, debugPort?: string, project?: string) => provider.attachApp(host, jmxPort, debugPort, project)),
         coc.commands.registerCommand(id("localapp.stop"), (arg?: BootApp | string) => provider.stop(arg)),

@@ -2,7 +2,7 @@ import * as coc from "coc.nvim";
 import { AppsView, BootApp } from "./apps";
 import { AppState } from "./launch";
 import { LiveApp, LiveData } from "./live";
-import { releaseView } from "./output";
+import { inLayout, releaseView } from "./output";
 import { StsApi } from "./sts";
 import { Symbols } from "./symbols";
 import { need, ready } from "./ready";
@@ -19,8 +19,6 @@ export interface Dashboard {
     /** The app whose tab is current, the empty views name it in their hint. */
     appTab: AppTab;
     views: Map<string, coc.TreeView<any>>;
-    /** Finds the element of a key in a view, used to reveal the bean or endpoint under the cursor. */
-    finders: Map<string, (key: string) => unknown>;
 }
 
 /**
@@ -80,14 +78,24 @@ export function hintItem(hint: HintNode): coc.TreeItem {
     return item;
 }
 
+/** The `layout.components` name of a view of the app tab. */
+const components: WeakMap<coc.TreeView<any>, string> = new WeakMap();
+
 /**
- * Creates a tree view and its `<id>.focus` command, which opens the view and is listed only when `listed` is set.
+ * Creates a tree view, with a listed `<id>.focus` command that opens it when `listed` is set; the views of the app tab
+ * are reached through that tab only. A view of the app tab names its `component`.
  */
-export function registerView<T>(d: Dashboard, id: string, title: string, provider: coc.TreeDataProvider<T>, { filter = false, listed = false }: { filter?: boolean; listed?: boolean } = {}): coc.TreeView<T> {
+export function registerView<T>(d: Dashboard, id: string, title: string, provider: coc.TreeDataProvider<T>, { filter = false, listed = false, component }: { filter?: boolean; listed?: boolean; component?: string } = {}): coc.TreeView<T> {
     const view = coc.window.createTreeView<T>(title, { treeDataProvider: provider, bufhidden: "hide", enableFilter: filter });
     keepAcrossTabs(view);
+    if (component !== undefined) {
+        components.set(view, component);
+    }
     d.views.set(id, view);
-    d.context.subscriptions.push(view, coc.commands.registerCommand(`${id}.focus`, () => focusView(view), undefined, !listed));
+    d.context.subscriptions.push(view);
+    if (listed) {
+        d.context.subscriptions.push(coc.commands.registerCommand(`${id}.focus`, () => focusView(view)));
+    }
     return view;
 }
 
@@ -129,19 +137,32 @@ export function stateIcon(state: boolean | AppState): coc.TreeItemIcon {
  * Opens a view. A tree view lives in one window only, one that sits in an app tab is moved into the current tab, which
  * is not an app tab.
  */
-export async function focusView(view: coc.TreeView<any>): Promise<void> {
-    await releaseView(view);
-    if (!view.visible) {
-        await view.show(TREE_SPLIT);
+export async function focusView(view: coc.TreeView<any>): Promise<boolean> {
+    const component: string | undefined = components.get(view);
+    const shown: boolean = component === undefined || inLayout(component);
+    if (shown) {
+        await releaseView(view);
+        if (!view.visible) {
+            await view.show(TREE_SPLIT);
+        }
+    } else {
+        coc.window.showWarningMessage(`${component} is not in spring.dashboard.layout.components`);
     }
+    return shown;
+}
+
+/**
+ * The views of the app tab that `layout.components` lists, in their fixed order.
+ */
+export function layoutViews(d: Dashboard): coc.TreeView<any>[] {
+    return [...d.views.values()].filter(v => inLayout(components.get(v) ?? ""));
 }
 
 /**
  * Starts the filter of a view, the find commands of upstream.
  */
 export async function findInView(view: coc.TreeView<any>): Promise<void> {
-    if (need("spring")) {
-        await focusView(view);
+    if (need("spring") && await focusView(view)) {
         const key: string = coc.workspace.getConfiguration("tree").get<string>("key.activeFilter", "f");
         await coc.workspace.nvim.call("win_gotoid", [view.windowId]);
         await coc.workspace.nvim.call("feedkeys", [key, "m"]);

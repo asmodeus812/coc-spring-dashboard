@@ -55,8 +55,8 @@ coc-springboot is connected to it. The README lists what the app needs.
 
 The dashboard needs two servers: the Java server (coc-java) for the apps, Run,
 Debug, Attach debugger and the launch settings, the Spring Boot server
-(coc-springboot) for the live and static data, the find commands, the remote
-apps and the refresh. It checks locally whether their commands are
+(coc-springboot) for the live and static data, the remote apps and the
+refresh. It checks locally whether their commands are
 registered and asks no server for that. An action that needs a server which
 is not up says "Java server starting" or "Spring Boot server not running" and
 does nothing else; Run does not wait for the Spring Boot server. Work in the
@@ -91,7 +91,8 @@ VIEWS                                             *coc-spring-dashboard-views*
 
 SPRING APPS is opened with `spring.apps.focus`. The Beans, Mappings,
 Properties and Memory views are part of the dashboard of an app and are
-reached with the find commands. |coc-spring-dashboard-commands|
+reached only through its tab, "Show app dashboard".
+|coc-spring-dashboard-commands|
 
 ==============================================================================
 COMMANDS                                       *coc-spring-dashboard-commands*
@@ -124,14 +125,6 @@ The app dashboard ~
                                                app that has run
   `spring.dashboard.livedata.refresh`          reload the live data of the
                                                connected apps
-  `spring.dashboard.showUnderCursor`           show the bean or endpoint
-                                               under the cursor in its view
-
-Find ~
-  `spring.beans.find`                          find a bean
-  `spring.mappings.find`                       find an endpoint
-  `spring.properties.find`                     find a property of a running
-                                               app
 
 Remote apps ~
   `spring.remoteApp.connect`                   connect an app of
@@ -191,9 +184,9 @@ until then they come from `spring.dashboard.apps`.
 
 `spring.dashboard.launch.prompt` says when the panel opens: `always` (default,
 every Run and Debug), `first` (the first time per app, then the remembered
-settings are used) or `never`. The "with profile" variants open the panel with the profiles list
-already open (also with `never`); a profile given as argument skips it.
-"Launch settings..." in the tree actions and
+settings are used) or `never`. The "with profile" variants open the panel with
+the profiles list already open (also with `never`); a profile given as
+argument skips it. "Launch settings..." in the tree actions and
 `spring-boot-dashboard.localapp.settings` open the panel without launching.
 
 The app starts as a JVM named "Spring: <app>", with the JMX arguments the
@@ -213,18 +206,25 @@ the working directory set to the project (`:tcd`):
 `spring.dashboard.layout.terminalHeight` sets the percent of the height the
 terminal gets, from 10 to 90, 65 by default.
 
+`spring.dashboard.layout.components` picks the panes, to free space: any of
+"beans", "endpoints", "properties", "memory" and "terminal", all of them by
+default. The panes keep the places above whatever the order of the list. A
+view left out is not shown anywhere. With the terminal left out the JVM keeps
+running in it without a window and the views fill the tab, as in the tab of an
+attached app. An empty list, or one with only unknown names, is all of them.
+
 The terminal has the output, colors and input. With
-`spring.dashboard.layout.cleanup` set to "keep", running again reuses the
-tab: the new terminal replaces the old one, the views stay. The focus stays
-where it was, unless `spring.dashboard.launch.focusOutput` is on. "Show app
-dashboard" in the tree actions and `spring-boot-dashboard.localapp.dashboard`
-switch to the tab, build it again from the terminal of the running app when
-the tab was closed, and restore the layout: a pane you closed comes back and
-the sizes are reset. Entering the tab restores a missing pane too. When the
-app stops, by Stop or by itself, coc wipes its terminal. With
-`spring.dashboard.layout.cleanup` "always" (the default) the tab closes with
-it, in one `:tabclose`; the last tab of Vim stays open. With "keep" the tab
-stays with the views and the next run fills it again.
+`spring.dashboard.layout.cleanup` set to "keep", running again reuses the tab:
+the new terminal replaces the old one, the views stay. Run and Debug switch to
+the tab and leave the focus in the terminal. "Show app dashboard" in the tree
+actions and `spring-boot-dashboard.localapp.dashboard` switch to the tab,
+build it again from the terminal of the running app when the tab was closed,
+and restore the layout: a pane you closed comes back and the sizes are reset.
+Entering the tab restores a missing pane too. When the app stops, by Stop or
+by itself, coc wipes its terminal. With `spring.dashboard.layout.cleanup`
+"always" (the default) the tab closes with it, in one `:tabclose`; the last
+tab of Vim stays open. With "keep" the tab stays with the views and the next
+run fills it again.
 
 A coc tree view lives in one window at a time, so the four views are shown in
 the app tab you are in: they move there when you enter it, and the other app
@@ -234,23 +234,31 @@ show every live app, as they do elsewhere. A view with nothing to show has one
 hint row, for example "Run <app> to see its properties" or "No beans yet", or
 "Spring Boot server not running" while that server is not up. SPRING APPS
 stays its own view on the right of the tab you are in, to start apps from;
-browsing the views never opens an app tab. Opening a view with a find command
-in a tab that is not an app tab moves it out of the app tab.
+browsing the views never opens an app tab.
 
-Going to a bean or an endpoint, and the lists of the relations, open in the
-window the app was started from. In an app tab that is that window if it is
-still there, otherwise the first normal window (no terminal, no tree) of the
-previous tab, otherwise a new tab. In any other tab they open in the previous
-window.
+Going to a bean or an endpoint, the lists of the relations, and the line where
+nvim-dap stops in a debugged app, open in the source window of the app: the
+window Run, Debug or Attach was started from, while it holds a file, otherwise
+the first window of its tab that does. The window and its tab are remembered
+by their ids, so moving tabs does not matter. A window takes a source when it
+holds a file (no terminal, tree or list), is not a float and is not fixed to
+its buffer ('winfixbuf'). When there is none, the tab is closed, or there is
+no app (a tree outside an app tab), they open in a float over the current tab,
+centered and `spring.dashboard.layout.fallbackSize` percent (default 75) of
+the width and height of the screen: the file at the line, the relations in a
+location list below it. In Vim the float is a popup that cannot be entered: it
+shows the file at the line, or the relations as lines, and closes when the
+cursor moves.
 
 Debug starts the JVM suspended, so that breakpoints in the startup code are
 hit, and attaches the debugger. Debugging needs nvim-dap (Neovim) or
 vimspector (Vim and Neovim, Python 3); without them Debug says so, Run still
-works. vimspector opens its own debug tab, needs no .vimspector.json, and
-counts as attached until its session is reset. If no debugger attaches
-within `spring.dashboard.debug.attachTimeout` seconds the JVM is killed.
-Ending the debug session in the debugger only detaches, the app keeps
-running.
+works. A stop of nvim-dap shows its line in the source window of the app (see
+above). vimspector opens its own debug tab and shows its stops there; it
+starts from the source window of the app, needs no .vimspector.json, and
+counts as attached until its session is reset. If no debugger attaches within
+`spring.dashboard.debug.attachTimeout` seconds the JVM is killed. Ending the
+debug session in the debugger only detaches, the app keeps running.
 
 Defaults per app name, by the name shown in the tree: >json
     "spring.dashboard.apps": {
@@ -335,7 +343,6 @@ asks the Spring Boot server to fetch the memory and the gc pauses of each
 app; a line gets its new value when the server announces that the fetch is
 done, so the first values show after the first fetch. The sparkline keeps
 `spring.dashboard.memory-view.display-data.max-datapoints` values.
-`spring.dashboard.memory.poll` asks for a fetch now.
 
 When an app stops its lines disappear.
 
@@ -373,15 +380,9 @@ show the defined ones.
 ------------------------------------------------------------------------------
 FIND                                               *coc-spring-dashboard-find*
 
-The beans, mappings and properties trees have a filter. These commands open
-the tree when needed and start the filter, as if you pressed the filter key
-of the tree (`f` by default):
-
-  `spring.beans.find`
-  `spring.mappings.find`
-  `spring.properties.find`
-
-Type to narrow the lines, `<Esc>` ends the filter.
+The beans, mappings and properties trees have a filter: press the filter key
+of the tree (`f` by default) in the tree, type to narrow the lines, `<Esc>`
+ends the filter.
 
 ------------------------------------------------------------------------------
 BEAN RELATIONS                                *coc-spring-dashboard-relations*
@@ -408,12 +409,6 @@ Java buffers get a sign in the sign column:
   `↗`   a request mapping
 
 Set `spring.dashboard.enableGutter` to `"off"` to hide them.
-
-Show the bean or endpoint under the cursor in its tree: >vim
-    :CocCommand spring.dashboard.showUnderCursor
-<
-It opens the beans or the mappings tree and selects the line. With the
-cursor on neither it says "No bean or endpoint under the cursor".
 
 ==============================================================================
 REMOTE APPS                                      *coc-spring-dashboard-remote*
@@ -449,8 +444,9 @@ ATTACH TO AN APP                                  *coc-spring-dashboard-attach*
 `spring-boot-dashboard.attach` is for an app that the dashboard did not
 start: on another machine, in a container, behind a forwarded port, or a
 local JVM. It connects the live data over JMX and attaches the debugger over
-JDWP, then opens the app dashboard tab with the four views. There is no
-terminal in that tab. A panel asks what to attach to: >
+JDWP: it opens the app dashboard tab with the four views first and stays in
+it, then attaches. There is no terminal in that tab. A panel
+asks what to attach to: >
      Attach to an app
      ▶ Attach with these settings
        Host            localhost
@@ -506,9 +502,8 @@ MESSAGES                                       *coc-spring-dashboard-messages*
     need the Java server (coc-java). Wait until it is up.
 
 "Spring Boot server not running"
-    The find commands, show under cursor, the live data refresh and the
-    remote apps need the Spring Boot server (coc-springboot). The empty views
-    say the same.
+    The live data refresh and the remote apps need the Spring Boot server
+    (coc-springboot). The empty views say the same.
 
 "... not active"
     coc-springboot or coc-java is not installed or did not start. Install
@@ -540,10 +535,6 @@ MESSAGES                                       *coc-spring-dashboard-messages*
     Open in browser needs the live data of the app, which connects a few
     seconds after the start.
 
-"No bean or endpoint here"
-    `spring.dashboard.showUnderCursor` found no bean or mapping on the
-    cursor line. Move to a line with a `◆` or `↗` sign.
-
 "No remote app configured", "No remote app to connect",
 "No remote app connected"
     `boot-java.remote-apps` is empty, all its apps are connected, or none
@@ -563,8 +554,8 @@ MESSAGES                                       *coc-spring-dashboard-messages*
     Attach to an app found nothing listening on the debug port, both ports
     are empty, or no project was picked. |coc-spring-dashboard-attach|
 
-"Started ...", "Stopping ...", "Found ... apps", "Refreshed ... apps",
-"Connecting ...", "Disconnected ..."
+"Stopping ...", "Found ... apps", "Refreshed ... apps", "Connecting ...",
+"Disconnected ..."
     A short notice for a change that is not on screen.
 
  vim:tw=78:ts=8:noet:ft=help:norl:
