@@ -64,7 +64,8 @@ export async function releaseView(view: coc.TreeView<any>): Promise<void> {
         const tab: number = await tabOf(view.windowId);
         const current: number = (await nvim.call("tabpagenr")) as number;
         if (tab > 0 && tab !== current && (await tabVar(TAB_KEY, "", tab)) !== "") {
-            await nvim.call("win_execute", [view.windowId, "silent! noautocmd close"]);
+            // with autocommands: coc then knows the view is hidden and shows it again
+            await nvim.call("win_execute", [view.windowId, "silent! close"]);
         }
     }
 }

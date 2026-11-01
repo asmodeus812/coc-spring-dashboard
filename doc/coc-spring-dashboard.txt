@@ -35,7 +35,7 @@ coc-spring-dashboard defines no key mappings. You use it through
 QUICKSTART                                   *coc-spring-dashboard-quickstart*
 
 Open the apps tree and start an app from it: >vim
-    :CocCommand spring.apps.focus
+    :CocCommand spring-boot-dashboard.localapp.list
 <
 The tree opens in a vertical split on the right. Pick an app and Run it, then
 open its dashboard with the actions key of the tree (`<Tab>` by default).
@@ -83,7 +83,7 @@ The description after a group says which data it shows:
   `defined`          static data from the source
 
 Refresh the live data of the connected apps by hand: >vim
-    :CocCommand spring.dashboard.livedata.refresh
+    :CocCommand spring-boot-dashboard.livedata.refresh
 <
 The static data rescans the source by itself when you save and when the
 index changes.
@@ -91,9 +91,9 @@ index changes.
 ==============================================================================
 VIEWS                                             *coc-spring-dashboard-views*
 
-SPRING APPS is opened with `spring.apps.focus`. The Beans, Mappings,
-Properties and Memory views are part of the dashboard of an app and are
-reached only through its tab, "Show app dashboard".
+SPRING APPS is opened with `spring-boot-dashboard.localapp.list`. The Beans,
+Mappings, Properties and Memory views are part of the dashboard of an app and
+are reached only through its tab, "Show app dashboard".
 |coc-spring-dashboard-commands|
 
 ==============================================================================
@@ -104,7 +104,7 @@ the extension are actions of the trees and are described under
 |coc-spring-dashboard-actions|.
 
 Start from SPRING APPS ~
-  `spring.apps.focus`                          open the list of apps
+  `spring-boot-dashboard.localapp.list`        open the list of apps
   `spring-boot-dashboard.refresh`              look for the apps of the
                                                workspace again
   `spring-boot-dashboard.localapp.run`         run a stopped app
@@ -113,9 +113,9 @@ Start from SPRING APPS ~
   `spring-boot-dashboard.localapp.settings`    set profiles, port, logging,
                                                JVM options, args and
                                                environment of an app
-  `spring-boot-dashboard.localapp.attach`      attach the debugger to a
+  `spring-boot-dashboard.localapp.connect`     attach the debugger to a
                                                running app
-  `spring-boot-dashboard.attach`               attach to an app that was
+  `spring-boot-dashboard.localapp.attach`      attach to an app that was
                                                not started here
                                                |coc-spring-dashboard-attach|
   `spring-boot-dashboard.localapp.stop`        stop a running app
@@ -125,13 +125,14 @@ Start from SPRING APPS ~
 The app dashboard ~
   `spring-boot-dashboard.localapp.dashboard`   show the dashboard tab of an
                                                app that has run
-  `spring.dashboard.livedata.refresh`          reload the live data of the
-                                               connected apps
+  `spring-boot-dashboard.livedata.refresh`     reload the live data of
+                                               the connected apps
 
 Remote apps ~
-  `spring.remoteApp.connect`                   connect an app of
+  `spring-boot-dashboard.remoteapp.connect`    connect an app of
                                                `boot-java.remote-apps`
-  `spring.remoteApp.disconnect`                disconnect an app of
+  `spring-boot-dashboard.remoteapp.disconnect`
+                                               disconnect an app of
                                                `boot-java.remote-apps`
 
 Without a tree line the app commands ask which app to use.
@@ -217,11 +218,11 @@ attached app. An empty list, or one with only unknown names, is all of them.
 
 The terminal has the output, colors and input. With
 `spring.dashboard.layout.cleanup` set to "keep", running again reuses the tab:
-the new terminal replaces the old one, the views stay. Run and Debug switch to
-the tab and leave the focus in the terminal. "Show app dashboard" in the tree
-actions and `spring-boot-dashboard.localapp.dashboard` switch to the tab,
-build it again from the terminal of the running app when the tab was closed,
-and restore the layout: a pane you closed comes back and the sizes are reset.
+the new terminal replaces the old one, the views stay. Run switches to the tab
+and leaves the focus in the terminal. "Show app dashboard" in the tree actions
+and `spring-boot-dashboard.localapp.dashboard` switch to the tab, build it
+again from the terminal of the running app when the tab was closed, and
+restore the layout: a pane you closed comes back and the sizes are reset.
 Entering the tab restores a missing pane too. When the app stops, by Stop or
 by itself, coc wipes its terminal. With `spring.dashboard.layout.cleanup`
 "always" (the default) the tab closes with it, in one `:tabclose`; the last
@@ -253,11 +254,14 @@ shows the file at the line, or the relations as lines, and closes when the
 cursor moves.
 
 Debug starts the JVM suspended, so that breakpoints in the startup code are
-hit, and attaches the debugger. Debugging needs nvim-dap (Neovim) or
-vimspector (Vim and Neovim, Python 3); without them Debug says so, Run still
-works. A stop of nvim-dap shows its line in the source window of the app (see
-above). vimspector opens its own debug tab and shows its stops there; it
-starts from the source window of the app, needs no .vimspector.json, and
+hit, builds the app tab, goes back to the source window of the app (see above)
+and attaches the debugger from there, so a debugger UI that opens when the
+session starts opens in the source tab, not in the app tab. Attach debugger
+(`spring-boot-dashboard.localapp.connect`) does the same for an app that Run
+started. Debugging needs nvim-dap (Neovim) or vimspector (Vim and Neovim,
+Python 3); without them Debug says so, Run still works. A stop of nvim-dap
+shows its line in the source window of the app (see above). vimspector opens
+its own debug tab and shows its stops there; it needs no .vimspector.json, and
 counts as attached until its session is reset. If no debugger attaches within
 `spring.dashboard.debug.attachTimeout` seconds the JVM is killed. Ending the
 debug session in the debugger only detaches, the app keeps running.
@@ -283,7 +287,7 @@ breakpoints hit from then on. The commands:
   `spring-boot-dashboard.localapp.debug`
   `spring-boot-dashboard.localapp.settings`
   `spring-boot-dashboard.localapp.dashboard`
-  `spring-boot-dashboard.localapp.attach`
+  `spring-boot-dashboard.localapp.connect`
   `spring-boot-dashboard.localapp.stop`
 
 Without a tree line they ask which app to use.
@@ -424,9 +428,10 @@ A remote app is an app on another host that you reach over JMX. List them in
         }
     ]
 <
-  `spring.remoteApp.connect`      pick an app of the list and connect it
-  `spring.remoteApp.disconnect`   pick a connected app of the list and
-                                  disconnect it
+  `spring-boot-dashboard.remoteapp.connect`
+      pick an app of the list and connect it
+  `spring-boot-dashboard.remoteapp.disconnect`
+      pick a connected app of the list and disconnect it
 
 Connect and Disconnect only serve the items of `boot-java.remote-apps`, there
 is no discovery; for the setting see |coc-springboot-remote-apps|. Apps that
@@ -443,12 +448,13 @@ connect and debug an app in one step, see |coc-spring-dashboard-attach|.
 ==============================================================================
 ATTACH TO AN APP                                  *coc-spring-dashboard-attach*
 
-`spring-boot-dashboard.attach` is for an app that the dashboard did not
-start: on another machine, in a container, behind a forwarded port, or a
+`spring-boot-dashboard.localapp.attach` is for an app that the dashboard did
+not start: on another machine, in a container, behind a forwarded port, or a
 local JVM. It connects the live data over JMX and attaches the debugger over
-JDWP: it opens the app dashboard tab with the four views first and stays in
-it, then attaches. There is no terminal in that tab. A panel
-asks what to attach to: >
+JDWP: it opens the app dashboard tab with the four views first, then attaches.
+With a debug port it goes back to the source window before the debugger
+attaches, as Debug does; with only a JMX port it stays in the app tab. There
+is no terminal in that tab. A panel asks what to attach to: >
      Attach to an app
      ▶ Attach with these settings
        Host            localhost
@@ -478,14 +484,14 @@ whose port is empty is left out. The options, one per line here: >
 The live half needs the Spring Boot server, the debug half a debugger
 (nvim-dap or vimspector) and the Java server. A missing one is named and the
 other half still runs. A half that fails does not undo the other. The
-disconnect is `spring.remoteApp.disconnect`.
+disconnect is `spring-boot-dashboard.remoteapp.disconnect`.
 
 The command takes optional arguments, which skip the panel: host, JMX port,
 debug port and project. A missing one is the remembered value, an empty
 string skips that half: >
-    :CocCommand spring-boot-dashboard.attach localhost 9010 5005 orders
+    :CocCommand spring-boot-dashboard.localapp.attach localhost 9010 5005 orders
 <
-`spring-boot-dashboard.localapp.attach` stays as it is: it attaches the
+`spring-boot-dashboard.localapp.connect` is the other one: it attaches the
 debugger to an app that Run started.
 
 ==============================================================================
@@ -554,7 +560,7 @@ MESSAGES                                       *coc-spring-dashboard-messages*
     has run.
 
 "No connected app"
-    `spring.dashboard.livedata.refresh` has no connected app to refresh.
+    `spring-boot-dashboard.livedata.refresh` has no connected app to refresh.
 
 "... live data connecting", "... debugger attached"
     The two halves of Attach to an app, each says how it went.

@@ -1,7 +1,7 @@
 import * as coc from "coc.nvim";
 import * as fs from "fs";
 import * as path from "path";
-import { Dashboard, registerView, stateIcon } from "./dashboard";
+import { Dashboard, focusView, registerView, stateIcon } from "./dashboard";
 import { AppLauncher, AppState, AttachProject, LaunchTarget } from "./launch";
 import { LiveApp, LiveData } from "./live";
 import { need, ready, waitFor } from "./ready";
@@ -296,11 +296,12 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
  */
 export function registerApps(d: Dashboard): AppsView {
     const provider: AppsView = d.apps;
-    const view = registerView(d, "spring.apps", "SPRING APPS", provider, { listed: true });
+    const view = registerView(d, "spring.apps", "SPRING APPS", provider);
     provider.onScreen = () => view.visible;
     d.live.onScreen = () => [...d.views.values()].some(v => v.visible);
     const id = (name: string) => `spring-boot-dashboard.${name}`;
     d.context.subscriptions.push(
+        coc.commands.registerCommand(id("localapp.list"), () => focusView(view)),
         coc.commands.registerCommand(id("refresh"), () => provider.refresh(true)),
         coc.commands.registerCommand(id("localapp.run"), (arg?: BootApp | string, profile?: string) => provider.run(arg, profile)),
         coc.commands.registerCommand(id("localapp.runWithProfile"), (arg?: BootApp | string, profile?: string) => provider.runWithProfile(arg, profile), undefined, true),
@@ -308,11 +309,11 @@ export function registerApps(d: Dashboard): AppsView {
         coc.commands.registerCommand(id("localapp.debugWithProfile"), (arg?: BootApp | string, profile?: string) => provider.debugWithProfile(arg, profile), undefined, true),
         coc.commands.registerCommand(id("localapp.settings"), (arg?: BootApp | string) => provider.settings(arg)),
         coc.commands.registerCommand(id("localapp.dashboard"), (arg?: BootApp | string) => provider.output(arg)),
-        coc.commands.registerCommand(id("localapp.attach"), (arg?: BootApp | string) => provider.attach(arg)),
-        coc.commands.registerCommand(id("attach"), (host?: string, jmxPort?: string, debugPort?: string, project?: string) => provider.attachApp(host, jmxPort, debugPort, project)),
+        coc.commands.registerCommand(id("localapp.connect"), (arg?: BootApp | string) => provider.attach(arg)),
+        coc.commands.registerCommand(id("localapp.attach"), (host?: string, jmxPort?: string, debugPort?: string, project?: string) => provider.attachApp(host, jmxPort, debugPort, project)),
         coc.commands.registerCommand(id("localapp.stop"), (arg?: BootApp | string) => provider.stop(arg)),
         coc.commands.registerCommand(id("localapp.open"), (arg?: BootApp | string) => provider.open(arg)),
-        coc.commands.registerCommand("spring.dashboard.livedata.refresh", () => need("spring") ? d.live.refresh(true) : undefined),
+        coc.commands.registerCommand(id("livedata.refresh"), () => need("spring") ? d.live.refresh(true) : undefined),
     );
     const resolve = async (attempt: number): Promise<void> => {
         const apps: BootApp[] = await provider.refresh();

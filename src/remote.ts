@@ -102,7 +102,7 @@ export function registerRemote(d: Dashboard): void {
         return picked ? label(picked.app) : undefined;
     };
     d.context.subscriptions.push(
-        coc.commands.registerCommand("spring.remoteApp.connect", () => need("spring") ? connect() : undefined),
-        coc.commands.registerCommand("spring.remoteApp.disconnect", () => need("spring") ? disconnect() : undefined),
+        coc.commands.registerCommand("spring-boot-dashboard.remoteapp.connect", () => need("spring") ? connect() : undefined),
+        coc.commands.registerCommand("spring-boot-dashboard.remoteapp.disconnect", () => need("spring") ? disconnect() : undefined),
     );
 }

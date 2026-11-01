@@ -1,5 +1,4 @@
 import * as coc from "coc.nvim";
-import { sourceWindowOf } from "./output";
 import { sleep } from "./util";
 
 /**
@@ -92,11 +91,6 @@ class VimspectorBackend implements DebugBackend {
         const nvim = coc.workspace.nvim;
         const name: string = `spring-${target.name}`;
         const before: number = await this.endedCount();
-        // vimspector reads the path of the current buffer, a window of a file has to be current
-        const source: number | undefined = await sourceWindowOf(target.tab);
-        if (source !== undefined) {
-            await nvim.call("win_gotoid", [source]);
-        }
         // literal values only, vimspector expands ${...} in both dicts
         await nvim.call("vimspector#LaunchWithConfigurations", [{
             [name]: {

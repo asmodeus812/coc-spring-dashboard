@@ -82,10 +82,9 @@ export function hintItem(hint: HintNode): coc.TreeItem {
 const components: WeakMap<coc.TreeView<any>, string> = new WeakMap();
 
 /**
- * Creates a tree view, with a listed `<id>.focus` command that opens it when `listed` is set; the views of the app tab
- * are reached through that tab only. A view of the app tab names its `component`.
+ * Creates a tree view. A view of the app tab names its `component`, it is reached through that tab only.
  */
-export function registerView<T>(d: Dashboard, id: string, title: string, provider: coc.TreeDataProvider<T>, { filter = false, listed = false, component }: { filter?: boolean; listed?: boolean; component?: string } = {}): coc.TreeView<T> {
+export function registerView<T>(d: Dashboard, id: string, title: string, provider: coc.TreeDataProvider<T>, { filter = false, component }: { filter?: boolean; component?: string } = {}): coc.TreeView<T> {
     const view = coc.window.createTreeView<T>(title, { treeDataProvider: provider, bufhidden: "hide", enableFilter: filter });
     keepAcrossTabs(view);
     if (component !== undefined) {
@@ -93,9 +92,6 @@ export function registerView<T>(d: Dashboard, id: string, title: string, provide
     }
     d.views.set(id, view);
     d.context.subscriptions.push(view);
-    if (listed) {
-        d.context.subscriptions.push(coc.commands.registerCommand(`${id}.focus`, () => focusView(view)));
-    }
     return view;
 }
 

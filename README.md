@@ -78,13 +78,13 @@ Set these keys in `coc-settings.json` (`:CocConfig` opens it).
 | `spring.dashboard.layout.fallbackSize` | number | `75` | Width and height, in percent of the screen, of the float a bean, an endpoint, a relation or an nvim-dap stop opens in when the app has no source window, or there is no app. |
 | `spring.dashboard.apps` | object | `{}` | Default launch settings per app name (`profiles`, `port`, `logLevel`, `logPackages`, `debugReport`, `vmArgs`, `args`, `env`), e.g. `{ "my-app": { "vmArgs": "-Xmx512m" } }`. |
 
-Connect and Disconnect (`spring.remoteApp.connect`, `spring.remoteApp.disconnect`)
+Connect and Disconnect (`spring-boot-dashboard.remoteapp.connect`, `spring-boot-dashboard.remoteapp.disconnect`)
 only serve the items of `boot-java.remote-apps`, a coc-springboot setting (see
 `:help coc-springboot-remote-apps` and `:help coc-spring-dashboard-remote`).
 Apps the dashboard starts are connected by themselves; any other app goes
 through Attach.
 
-Attach to an app (`spring-boot-dashboard.attach`) connects the live data over
+Attach to an app (`spring-boot-dashboard.localapp.attach`) connects the live data over
 JMX and attaches the debugger over JDWP for an app the dashboard did not start
 (another machine, a container, a forwarded port). A panel asks for the host,
 the JMX port, the debug port and the project, and can copy the matching JVM
@@ -101,7 +101,7 @@ options. See `:help coc-spring-dashboard-attach`.
 - No trees, or a warning that coc-springboot or coc-java is not active:
   check `:CocList extensions` and open a Java file of the project.
 - An app stays `○ stopped` while it runs: check the actuator dependency, the
-  JVM arguments above, then run `:CocCommand spring.dashboard.livedata.refresh`.
+  JVM arguments above, then run `:CocCommand spring-boot-dashboard.livedata.refresh`.
 - Every message the dashboard shows is explained in
   `:help coc-spring-dashboard-messages`.
 

@@ -5,7 +5,7 @@ import * as net from "net";
 import * as path from "path";
 import { AttachTarget, DebugBackend, detectBackend } from "./debug";
 import { AppLauncher, AppState, AttachOptions, AttachProject, LaunchOptions, LaunchTarget, jmxArgs } from "./launch";
-import { OutputTabs, TabApp } from "./output";
+import { OutputTabs, TabApp, sourceWindowOf } from "./output";
 import { AttachPanel, AttachSettings, LaunchArguments, LaunchPanel, LaunchSettings, defaultSettings, launchArguments } from "./settings";
 import { connectJmx, connectPid, disconnectPid } from "./remote";
 import { need, waitFor } from "./ready";
@@ -197,6 +197,12 @@ export class TerminalLauncher implements AppLauncher {
      * Starts the java-debug adapter and attaches the backend to the JDWP port of the target, within the attach timeout.
      */
     private async attachBackend(backend: DebugBackend, target: Omit<AttachTarget, "adapterPort">): Promise<AttachTarget> {
+        // the dashboard tab is there, the debugger starts from the source window: a debugger ui opens in the tab that is
+        // current when the session starts (vimspector also reads the current buffer)
+        const source: number | undefined = await sourceWindowOf(target.tab);
+        if (source !== undefined) {
+            await coc.workspace.nvim.call("win_gotoid", [source]);
+        }
         const adapterPort: number = await javaCommand<number>("vscode.java.startDebugSession");
         const attached: AttachTarget = { ...target, adapterPort };
         await backend.attach(attached, config<number>("debug.attachTimeout", 30) * 1000);

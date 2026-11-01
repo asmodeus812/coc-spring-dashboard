@@ -202,12 +202,12 @@
                 "category": "Spring Boot Dashboard"
             },
             {
-                "command": "spring-boot-dashboard.localapp.attach",
+                "command": "spring-boot-dashboard.localapp.connect",
                 "title": "Attach the debugger to a running app",
                 "category": "Spring Boot Dashboard"
             },
             {
-                "command": "spring-boot-dashboard.attach",
+                "command": "spring-boot-dashboard.localapp.attach",
                 "title": "Attach to an app",
                 "category": "Spring Boot Dashboard"
             },
@@ -222,12 +222,12 @@
                 "category": "Spring Boot Dashboard"
             },
             {
-                "command": "spring.dashboard.livedata.refresh",
+                "command": "spring-boot-dashboard.livedata.refresh",
                 "title": "Refresh the live data",
                 "category": "Spring Boot Dashboard"
             },
             {
-                "command": "spring.apps.focus",
+                "command": "spring-boot-dashboard.localapp.list",
                 "title": "Focus the apps view",
                 "category": "Spring Boot Dashboard"
             },
@@ -307,12 +307,12 @@
                 "category": "Spring Boot Dashboard"
             },
             {
-                "command": "spring.remoteApp.connect",
+                "command": "spring-boot-dashboard.remoteapp.connect",
                 "title": "Connect a remote app",
                 "category": "Spring Boot Dashboard"
             },
             {
-                "command": "spring.remoteApp.disconnect",
+                "command": "spring-boot-dashboard.remoteapp.disconnect",
                 "title": "Disconnect a remote app",
                 "category": "Spring Boot Dashboard"
             }
