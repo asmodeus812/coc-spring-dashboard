@@ -189,9 +189,9 @@ until then they come from `spring.dashboard.apps`.
   Program args    free text.
   Environment     `KEY=VALUE` pairs for the JVM.
 
-`spring.dashboard.launch.prompt` says when the panel opens: `first` (default,
-the first time per app, then the remembered settings are used), `always` or
-`never`. The "with profile" variants open the panel with the profiles list
+`spring.dashboard.launch.prompt` says when the panel opens: `always` (default,
+every Run and Debug), `first` (the first time per app, then the remembered
+settings are used) or `never`. The "with profile" variants open the panel with the profiles list
 already open (also with `never`); a profile given as argument skips it.
 "Launch settings..." in the tree actions and
 `spring-boot-dashboard.localapp.settings` open the panel without launching.

@@ -78,8 +78,8 @@
                         "always",
                         "never"
                     ],
-                    "default": "first",
-                    "description": "When the launch panel opens: the first time per app (then the remembered settings are used), every time, or never"
+                    "default": "always",
+                    "description": "When the launch panel opens: the first time per app (then the remembered settings are used), every time (default), or never"
                 },
                 "spring.dashboard.launch.focusOutput": {
                     "type": "boolean",

@@ -70,7 +70,7 @@ Set these keys in `coc-settings.json` (`:CocConfig` opens it).
 | `spring.dashboard.enableGutter` | string (`on`, `off`) | `"on"` | Signs on the bean definitions and request mappings. |
 | `spring.dashboard.debug.attachTimeout` | number | `30` | Seconds to wait for a debugger to attach; the app is killed after that. |
 | `spring.dashboard.stop.gracePeriod` | number | `10` | Seconds between Stop (SIGTERM) and the kill (SIGKILL). |
-| `spring.dashboard.launch.prompt` | string | `first` | When the launch panel opens: `first` (first time per app), `always` or `never`. |
+| `spring.dashboard.launch.prompt` | string | `always` | When the launch panel opens: `always` (every Run and Debug), `first` (first time per app) or `never`. |
 | `spring.dashboard.launch.focusOutput` | boolean | `false` | Switch to the dashboard tab of an app when it is started. |
 | `spring.dashboard.layout.terminalHeight` | number | `65` | Percent (10 to 90) of the height of an app dashboard tab given to the terminal under the views. |
 | `spring.dashboard.layout.cleanup` | string (`always`, `keep`) | `"always"` | When an app stops: close its dashboard tab, or keep it for the next run. |

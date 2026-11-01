@@ -379,12 +379,12 @@ export class TerminalLauncher implements AppLauncher {
     }
 
     /**
-     * The settings of a launch: the panel the first time per app, every time or never, as `spring.dashboard.launch.prompt`
-     * says, otherwise the remembered ones. A profile of the command replaces the profiles, the "with profile" commands
+     * The settings of a launch: the panel every time (the default), the first time per app or never, as
+     * `spring.dashboard.launch.prompt` says, otherwise the remembered ones. A profile of the command replaces the profiles, the "with profile" commands
      * open the panel with the profiles first. Undefined when cancelled.
      */
     private async settings(app: LaunchTarget, action: string, options: LaunchOptions): Promise<LaunchSettings | undefined> {
-        const mode: string = config<string>("launch.prompt", "first");
+        const mode: string = config<string>("launch.prompt", "always");
         const saved: LaunchSettings | undefined = this.panel.saved(app);
         const initial: LaunchSettings = { ...(saved ?? defaultSettings(app)) };
         if (options.profile !== undefined) {
