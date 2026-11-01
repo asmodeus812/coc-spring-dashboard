@@ -68,10 +68,10 @@ export async function releaseView(view: coc.TreeView<any>): Promise<void> {
 
 /**
  * The app tabs: one tab per app at the end of the tab line, the dashboard of the app. The upper half has the Beans,
- * Mappings, Properties and Memory views in four equal columns, the lower half the terminal buffer of its last run. A
- * coc tree view lives in one window only (it keeps one buffer and one window id), so the views move into the app tab
- * that is current when it is entered, the other app tabs keep the terminal only until they are entered again. Plain Ex
- * commands and Vimscript functions, so it is the same in Vim and Neovim.
+ * Mappings, Properties and Memory views in four equal columns, the lower half the terminal of the app; the tab closes
+ * when the app stops unless `layout.cleanup` is "keep". A coc tree view lives in one window only (it keeps one buffer and one window id), so the views
+ * move into the app tab that is current when it is entered, the other app tabs keep the terminal only until they are
+ * entered again. Plain Ex commands and Vimscript functions, so it is the same in Vim and Neovim.
  */
 export class OutputTabs {
     /** The views of the upper half, left to right. */
@@ -93,6 +93,25 @@ export class OutputTabs {
             }
         }
         return found;
+    }
+
+    /**
+     * The app of a tab stopped and coc wiped its terminal. With `layout.cleanup` "always" the tab closes, with "keep" it
+     * stays for the next run. A tab that holds the live terminal of a new run stays, so does the last tab.
+     */
+    public stopped(key: string): Promise<void> {
+        this.queue = this.queue.then(() => this.closeStopped(key)).catch(() => undefined);
+        return this.queue;
+    }
+
+    private async closeStopped(key: string): Promise<void> {
+        const nvim = coc.workspace.nvim;
+        const found: number = await this.find(key);
+        const last: number = (await nvim.call("tabpagenr", ["$"])) as number;
+        const live: boolean = found > 0 && (await nvim.call("bufexists", [await tabVar(TAB_TERMINAL, 0, found)])) as number === 1;
+        if (config<string>("layout.cleanup", "always") === "always" && found > 0 && last > 1 && !live) {
+            await nvim.command(`tabclose ${found}`);
+        }
     }
 
     /**

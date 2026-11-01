@@ -62,7 +62,7 @@ export class TerminalLauncher implements AppLauncher {
         return message;
     }
 
-    // the tab, or the terminal of the last run when the tab was closed
+    // the tab, or the terminal of the running app when the tab was closed
     public async hasOutput(app: LaunchTarget): Promise<boolean> {
         return (await this.output.has(app.mainClass)) || await this.terminalOf(app) !== undefined;
     }
@@ -74,7 +74,7 @@ export class TerminalLauncher implements AppLauncher {
     }
 
     /**
-     * Switches to the tab of the app, the tab is built again from the terminal of the last run when it was closed.
+     * Switches to the tab of the app, the tab is built again from the terminal of the running app when it was closed.
      */
     public async showOutput(app: LaunchTarget): Promise<string> {
         let shown: boolean = await this.output.focus(app.mainClass);
@@ -87,7 +87,7 @@ export class TerminalLauncher implements AppLauncher {
         if (shown) {
             message = `Dashboard ${app.name}`;
         } else {
-            message = `${app.name} not run yet`;
+            message = `${app.name} not running`;
             coc.window.showWarningMessage(message);
         }
         return message;
@@ -360,10 +360,12 @@ export class TerminalLauncher implements AppLauncher {
         }
     }
 
+    // coc wipes the buffer of a terminal whose process exited
     private closed(terminal: coc.Terminal): void {
-        for (const session of this.sessions.values()) {
+        for (const [key, session] of this.sessions) {
             if (session.terminal === terminal) {
                 this.setState(session, "stopped");
+                void this.output.stopped(key);
             }
         }
     }

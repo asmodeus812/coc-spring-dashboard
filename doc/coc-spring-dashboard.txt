@@ -213,24 +213,29 @@ the working directory set to the project (`:tcd`):
 `spring.dashboard.layout.terminalHeight` sets the percent of the height the
 terminal gets, from 10 to 90, 65 by default.
 
-The terminal has the output, colors and input. Running again reuses the tab:
-the new terminal replaces the old one, the views stay. The focus stays where
-it was, unless `spring.dashboard.launch.focusOutput` is on. "Show app
+The terminal has the output, colors and input. With
+`spring.dashboard.layout.cleanup` set to "keep", running again reuses the
+tab: the new terminal replaces the old one, the views stay. The focus stays
+where it was, unless `spring.dashboard.launch.focusOutput` is on. "Show app
 dashboard" in the tree actions and `spring-boot-dashboard.localapp.dashboard`
-switch to the tab, build it again from the terminal of the last run when it
-was closed, and restore the layout: a pane you closed comes back and the sizes
-are reset. Entering the tab restores a missing pane too. When the app stops
-the tab stays, the terminal shows the exit.
+switch to the tab, build it again from the terminal of the running app when
+the tab was closed, and restore the layout: a pane you closed comes back and
+the sizes are reset. Entering the tab restores a missing pane too. When the
+app stops, by Stop or by itself, coc wipes its terminal. With
+`spring.dashboard.layout.cleanup` "always" (the default) the tab closes with
+it, in one `:tabclose`; the last tab of Vim stays open. With "keep" the tab
+stays with the views and the next run fills it again.
 
 A coc tree view lives in one window at a time, so the four views are shown in
 the app tab you are in: they move there when you enter it, and the other app
-tabs keep the terminal only until they are entered. The views show every live
-app, as they do elsewhere. A view with nothing to show has one hint row, for
-example "Run <app> to see its properties" or "No beans yet", or "Spring Boot
-server not running" while that server is not up. SPRING APPS stays
-its own view on the right of the tab you are in, to start apps from; browsing
-the views never opens an app tab. Opening a view with a find command in a
-tab that is not an app tab moves it out of the app tab.
+tabs keep the terminal only until they are entered. Closing an app tab, by the
+dashboard or by hand, keeps the views: the next app tab shows them. The views
+show every live app, as they do elsewhere. A view with nothing to show has one
+hint row, for example "Run <app> to see its properties" or "No beans yet", or
+"Spring Boot server not running" while that server is not up. SPRING APPS
+stays its own view on the right of the tab you are in, to start apps from;
+browsing the views never opens an app tab. Opening a view with a find command
+in a tab that is not an app tab moves it out of the app tab.
 
 Going to a bean or an endpoint, and the lists of the relations, open in the
 window the app was started from. In an app tab that is that window if it is

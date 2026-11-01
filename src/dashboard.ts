@@ -85,9 +85,22 @@ export function hintItem(hint: HintNode): coc.TreeItem {
  */
 export function registerView<T>(d: Dashboard, id: string, title: string, provider: coc.TreeDataProvider<T>, { filter = false, listed = false }: { filter?: boolean; listed?: boolean } = {}): coc.TreeView<T> {
     const view = coc.window.createTreeView<T>(title, { treeDataProvider: provider, bufhidden: "hide", enableFilter: filter });
+    keepAcrossTabs(view);
     d.views.set(id, view);
     d.context.subscriptions.push(view, coc.commands.registerCommand(`${id}.focus`, () => focusView(view), undefined, !listed));
     return view;
+}
+
+/**
+ * A coc TreeView remembers the tab it was last shown from (private `_targetTabId`, set in `show()`, coc.nvim
+ * src/tree/TreeView.ts) and disposes itself for good when that tab closes; nothing else reads it for these views
+ * (coc's outline reads the getter of its own views only). The views move between app tabs and outlive them, closed
+ * by the dashboard or by hand, so the field stays unset. A coc without the field leaves the view as it is.
+ */
+function keepAcrossTabs(view: coc.TreeView<any>): void {
+    if ("_targetTabId" in view) {
+        Object.defineProperty(view, "_targetTabId", { get: () => undefined, set: () => undefined, configurable: true });
+    }
 }
 
 /**

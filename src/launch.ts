@@ -54,7 +54,7 @@ export interface AppLauncher {
     configure(app: LaunchTarget): Promise<string>;
     /** Switches to the dashboard tab of an app. */
     showOutput(app: LaunchTarget): Promise<string>;
-    /** Whether the app has a dashboard tab, or a terminal of its last run to build one from. */
+    /** Whether the app has a dashboard tab, or a terminal of its running JVM to build one from. */
     hasOutput(app: LaunchTarget): Promise<boolean>;
     /** Attaches the debugger to an app that was started with run. */
     attach(app: LaunchTarget): Promise<string>;
