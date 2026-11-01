@@ -16,8 +16,9 @@ Using it inside Neovim is described in the help page:
 
 - coc-java and coc-springboot, installed and active (declared as extension
   dependencies). The dashboard gets all of its data through them and waits
-  for their servers to start; until then it says "Java server starting" or
-  "Spring Boot server not running".
+  for their servers to start, the Java server until it has imported the
+  projects; until then it says "Java server starting" or "Spring Boot server
+  not running".
 - For live data (running state, live beans and mappings, properties,
   memory), a running app with `spring-boot-starter-actuator` on its
   classpath, started with these JVM arguments:

@@ -56,13 +56,15 @@ coc-springboot is connected to it. The README lists what the app needs.
 The dashboard needs two servers: the Java server (coc-java) for the apps, Run,
 Debug, Attach debugger and the launch settings, the Spring Boot server
 (coc-springboot) for the live and static data, the remote apps and the
-refresh. It checks locally whether their commands are
-registered and asks no server for that. An action that needs a server which
-is not up says "Java server starting" or "Spring Boot server not running" and
-does nothing else; Run does not wait for the Spring Boot server. Work in the
-background waits for the server instead of polling it: the live data of a
-started app is connected once the Spring Boot server is up, by sending it
-the pid of the app (as for the remote apps, so it does not depend on
+refresh. It checks locally whether their commands are registered and asks no
+server for that; the Java server counts as up only once it has imported the
+projects, which coc-java reports (its "ServiceReady"), since before that it
+finds no apps. An action that needs a server which is not up says "Java server
+starting" or "Spring Boot server not running" and does nothing else; Run does
+not wait for the Spring Boot server. Work in the background waits for the
+server instead of polling it: the live data of a started app is connected once
+the Spring Boot server is up, by sending it the pid of the app (as for the
+remote apps, so it does not depend on
 `boot-java.live-information.all-local-java-processes`), and the beans and
 mappings of the workspace are loaded once it is up and tried again while they
 come back empty.
@@ -499,7 +501,8 @@ MESSAGES                                       *coc-spring-dashboard-messages*
 
 "Java server starting"
     Run, Debug, Attach debugger, Launch settings and the refresh of the apps
-    need the Java server (coc-java). Wait until it is up.
+    need the Java server (coc-java), up and done importing the projects. Wait
+    until it has imported them.
 
 "Spring Boot server not running"
     The live data refresh and the remote apps need the Spring Boot server
@@ -540,9 +543,15 @@ MESSAGES                                       *coc-spring-dashboard-messages*
     `boot-java.remote-apps` is empty, all its apps are connected, or none
     of them is connected. |coc-spring-dashboard-remote|
 
-"No app found", "No stopped app", "No running app", "No app dashboard"
-    Nothing to pick for the command. Open a Java file of the project and
-    wait for the Java server for the first; for the last, run an app.
+"No Spring Boot app found"
+    The Java server found no class with `@SpringBootApplication` in the
+    workspace. Open a Java file of the project and wait until the Java
+    server has imported it, then try again.
+
+"Every app is running", "No app is running", "No app dashboard"
+    Nothing to pick for the command: Run and Debug need a stopped app, Stop,
+    Open and Attach debugger a running one, Show app dashboard an app that
+    has run.
 
 "No connected app"
     `spring.dashboard.livedata.refresh` has no connected app to refresh.

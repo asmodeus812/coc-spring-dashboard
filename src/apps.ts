@@ -11,10 +11,10 @@ import { failed, formatUrl, javaCommand, openUrl, projectRoot } from "./util";
 type AppFilter = "any" | "stopped" | "running" | "attachable" | "output";
 
 const NOTHING_TO_PICK: Record<AppFilter, string> = {
-    any: "No app found",
-    stopped: "No stopped app",
-    running: "No running app",
-    attachable: "No running app",
+    any: "No Spring Boot app found",
+    stopped: "Every app is running",
+    running: "No app is running",
+    attachable: "No app is running",
     output: "No app dashboard",
 };
 
@@ -246,9 +246,14 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
      * picked from those; the picker shows the state and the port of each app. Nothing to act on says so.
      */
     private async resolve(arg?: BootApp | string, which: AppFilter = "any"): Promise<BootApp | undefined> {
-        const named: BootApp | undefined = typeof arg === "string" ? this.apps.find(a => a.name === arg || a.mainClass === arg) : arg;
-        let picked: BootApp | undefined = named;
-        if (picked === undefined) {
+        // right after startup the background lookup may not have found the apps yet: look now
+        if (this.apps.length === 0) {
+            await this.load(false);
+        }
+        let picked: BootApp | undefined = typeof arg === "string" ? this.apps.find(a => a.name === arg || a.mainClass === arg) : arg;
+        if (picked === undefined && this.apps.length === 0) {
+            coc.window.showWarningMessage(NOTHING_TO_PICK.any);
+        } else if (picked === undefined) {
             const candidates: BootApp[] = [];
             for (const app of this.apps) {
                 if (await this.accepts(app, which)) {

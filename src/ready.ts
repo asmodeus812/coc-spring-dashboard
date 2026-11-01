@@ -20,9 +20,34 @@ const NOT_READY: Record<Server, string> = {
     spring: "Spring Boot server not running",
 };
 
-/** Whether the server of coc-java or coc-springboot is up. */
+/** The part of coc-java's API the dashboard reads: `serverReady` resolves once jdtls has imported the projects. */
+interface JavaApi {
+    serverReady?: () => Promise<boolean>;
+}
+
+let javaImported: boolean = false;
+let watchingJava: boolean = false;
+
+/**
+ * Whether jdtls has imported the projects (its ServiceReady): before that it answers with no apps and no classpath. Read
+ * from coc-java's API once that extension is active; a coc-java without `serverReady` counts as imported.
+ */
+function imported(): boolean {
+    const java = coc.extensions.getExtensionById<JavaApi>("coc-java");
+    if (!watchingJava && java?.isActive) {
+        watchingJava = true;
+        if (java.exports?.serverReady) {
+            java.exports.serverReady().then(ok => { javaImported = ok === true; }).catch(() => undefined);
+        } else {
+            javaImported = true;
+        }
+    }
+    return javaImported;
+}
+
+/** Whether the server of coc-java or coc-springboot is up: its commands are there, and jdtls has imported the projects. */
 export function ready(server: Server): boolean {
-    return coc.commands.has(COMMAND[server]);
+    return coc.commands.has(COMMAND[server]) && (server !== "java" || imported());
 }
 
 /**
