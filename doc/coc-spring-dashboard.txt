@@ -460,9 +460,9 @@ cancels. With one Java project the Project row is filled with it. The values
 are remembered in the workspace. An empty port skips that half.
 
 Copy the start options puts the JVM options that match the panel on the
-clipboard (register `+`) and the unnamed register, one per line, and says
-"Start options copied". Start the app with them. The half whose port is empty
-is left out: >
+clipboard (register `+`) and the unnamed register, on one line separated by
+spaces, and says "Start options copied". Start the app with them. The half
+whose port is empty is left out. The options, one per line here: >
     -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
     -Dcom.sun.management.jmxremote.port=9010
     -Dcom.sun.management.jmxremote.rmi.port=9010

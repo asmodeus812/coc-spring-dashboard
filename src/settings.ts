@@ -260,7 +260,7 @@ const ATTACH_DEFAULTS: AttachSettings = { host: "localhost", jmxPort: "9010", de
 const ATTACH_KEY: string = "attach.settings";
 
 /**
- * The JVM options an app needs to be attached to with these settings, one per line. A half with an empty port is left out.
+ * The JVM options an app needs to be attached to with these settings. A half with an empty port is left out.
  */
 export function startOptions(s: AttachSettings): string[] {
     const options: string[] = [];
@@ -337,7 +337,8 @@ export class AttachPanel {
     }
 
     private async copy(s: AttachSettings): Promise<void> {
-        const text: string = startOptions(s).join("\n");
+        // one line, ready to paste into a command line or JAVA_TOOL_OPTIONS
+        const text: string = startOptions(s).join(" ");
         // the system clipboard may be missing, the unnamed register always works
         for (const register of ["+", "\""]) {
             await coc.workspace.nvim.call("setreg", [register, text]).catch(() => undefined);
