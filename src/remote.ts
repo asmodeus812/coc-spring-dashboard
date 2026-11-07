@@ -63,8 +63,8 @@ export async function disconnectPid(pid: number): Promise<void> {
 const configuredApps = (): RemoteApp[] => coc.workspace.getConfiguration("boot-java").get<RemoteApp[]>("remote-apps", []);
 
 /**
- * Connects and disconnects the apps of `boot-java.remote-apps` (no discovery) through the live data of the language
- * server. Apps connected through Attach are not listed.
+ * Connects the live data of the apps of `boot-java.remote-apps` (no discovery), and disconnects any remote app the
+ * dashboard connected, from that list or by Attach; a local app is never offered, it follows its own start and stop.
  */
 export function registerRemote(d: Dashboard): void {
     const connect = async (): Promise<string | undefined> => {
@@ -86,8 +86,8 @@ export function registerRemote(d: Dashboard): void {
         return picked ? label(picked.app) : undefined;
     };
     const disconnect = async (): Promise<string | undefined> => {
-        const configured: RemoteApp[] = configuredApps();
-        const remote: RemoteApp[] = connected.filter(a => configured.some(c => c.jmxurl === a.jmxurl));
+        // every remote app the dashboard connected, by Attach or from the list; never a local app (a pid entry)
+        const remote: RemoteApp[] = connected.filter(a => a.jmxurl !== undefined);
         let picked: { label: string; app: RemoteApp } | undefined;
         if (remote.length === 0) {
             coc.window.showWarningMessage("No remote app connected");
@@ -102,7 +102,7 @@ export function registerRemote(d: Dashboard): void {
         return picked ? label(picked.app) : undefined;
     };
     d.context.subscriptions.push(
-        coc.commands.registerCommand("spring-boot-dashboard.remoteapp.connect", () => need("spring") ? connect() : undefined),
-        coc.commands.registerCommand("spring-boot-dashboard.remoteapp.disconnect", () => need("spring") ? disconnect() : undefined),
+        coc.commands.registerCommand("spring-boot-dashboard.app.remote.connect", () => need("spring") ? connect() : undefined),
+        coc.commands.registerCommand("spring-boot-dashboard.app.remote.disconnect", () => need("spring") ? disconnect() : undefined),
     );
 }

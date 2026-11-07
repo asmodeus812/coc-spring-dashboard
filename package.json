@@ -64,7 +64,7 @@
                 "spring.dashboard.debug.attachTimeout": {
                     "type": "number",
                     "default": 30,
-                    "description": "Seconds to wait for a debugger to attach to a debugged app, the app is killed after that"
+                    "description": "Seconds to wait for the debugger to attach (Debug, Attach debugger, Attach to a remote app); an app started with Debug is stopped after that, the others keep running"
                 },
                 "spring.dashboard.stop.gracePeriod": {
                     "type": "number",
@@ -168,67 +168,62 @@
         "commands": [
             {
                 "command": "spring-boot-dashboard.refresh",
-                "title": "Refresh the apps",
+                "title": "Look for the local apps again",
                 "category": "Spring Boot Dashboard"
             },
             {
-                "command": "spring-boot-dashboard.localapp.run",
-                "title": "Run app",
+                "command": "spring-boot-dashboard.app.local.run",
+                "title": "Run a local app",
                 "category": "Spring Boot Dashboard"
             },
             {
-                "command": "spring-boot-dashboard.localapp.runWithProfile",
-                "title": "Run app with profiles",
+                "command": "spring-boot-dashboard.app.local.runWithProfile",
+                "title": "Run a local app with profiles",
                 "category": "Spring Boot Dashboard"
             },
             {
-                "command": "spring-boot-dashboard.localapp.debug",
-                "title": "Debug app",
+                "command": "spring-boot-dashboard.app.local.debug",
+                "title": "Debug a local app",
                 "category": "Spring Boot Dashboard"
             },
             {
-                "command": "spring-boot-dashboard.localapp.debugWithProfile",
-                "title": "Debug app with profiles",
+                "command": "spring-boot-dashboard.app.local.debugWithProfile",
+                "title": "Debug a local app with profiles",
                 "category": "Spring Boot Dashboard"
             },
             {
-                "command": "spring-boot-dashboard.localapp.settings",
-                "title": "Edit the launch settings of an app",
+                "command": "spring-boot-dashboard.app.local.settings",
+                "title": "Edit how a local app starts",
                 "category": "Spring Boot Dashboard"
             },
             {
-                "command": "spring-boot-dashboard.localapp.dashboard",
-                "title": "Show the dashboard tab of an app",
+                "command": "spring-boot-dashboard.app.local.dashboard",
+                "title": "Show the dashboard tab of a local app",
                 "category": "Spring Boot Dashboard"
             },
             {
-                "command": "spring-boot-dashboard.localapp.connect",
-                "title": "Attach the debugger to a running app",
+                "command": "spring-boot-dashboard.app.local.attach",
+                "title": "Attach the debugger to a local app started with Run",
                 "category": "Spring Boot Dashboard"
             },
             {
-                "command": "spring-boot-dashboard.localapp.attach",
-                "title": "Attach to an app",
+                "command": "spring-boot-dashboard.app.local.stop",
+                "title": "Stop a local app",
                 "category": "Spring Boot Dashboard"
             },
             {
-                "command": "spring-boot-dashboard.localapp.stop",
-                "title": "Stop app",
-                "category": "Spring Boot Dashboard"
-            },
-            {
-                "command": "spring-boot-dashboard.localapp.open",
-                "title": "Open a running app in the browser",
+                "command": "spring-boot-dashboard.app.local.open",
+                "title": "Open a local app in the browser",
                 "category": "Spring Boot Dashboard"
             },
             {
                 "command": "spring-boot-dashboard.livedata.refresh",
-                "title": "Refresh the live data",
+                "title": "Reload the live data of the connected apps",
                 "category": "Spring Boot Dashboard"
             },
             {
-                "command": "spring-boot-dashboard.localapp.list",
-                "title": "Focus the apps view",
+                "command": "spring-boot-dashboard.app.local.list",
+                "title": "Open the list of local apps (SPRING APPS)",
                 "category": "Spring Boot Dashboard"
             },
             {
@@ -307,13 +302,18 @@
                 "category": "Spring Boot Dashboard"
             },
             {
-                "command": "spring-boot-dashboard.remoteapp.connect",
-                "title": "Connect a remote app",
+                "command": "spring-boot-dashboard.app.remote.attach",
+                "title": "Attach to a remote app: live data and debugger",
                 "category": "Spring Boot Dashboard"
             },
             {
-                "command": "spring-boot-dashboard.remoteapp.disconnect",
-                "title": "Disconnect a remote app",
+                "command": "spring-boot-dashboard.app.remote.connect",
+                "title": "Connect the live data of a boot-java.remote-apps entry",
+                "category": "Spring Boot Dashboard"
+            },
+            {
+                "command": "spring-boot-dashboard.app.remote.disconnect",
+                "title": "Disconnect the live data of a remote app",
                 "category": "Spring Boot Dashboard"
             }
         ]

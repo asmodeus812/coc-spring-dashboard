@@ -309,7 +309,7 @@ export class AttachPanel {
         let result: AttachSettings | undefined = undefined;
         let done: boolean = false;
         while (!done) {
-            const picked = await coc.window.showQuickPick([{ label: "▶ Attach with these settings", key: "go" }, ...this.rows(settings)], { title: "Attach to an app" });
+            const picked = await coc.window.showQuickPick([{ label: "▶ Attach with these settings", key: "go" }, ...this.rows(settings)], { title: "Attach to a remote app" });
             if (picked === undefined) {
                 done = true;
             } else if (picked.key === "go") {

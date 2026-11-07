@@ -27,15 +27,19 @@ Using it inside Neovim is described in the help page:
   -Dspring.jmx.enabled=true -Dmanagement.endpoints.jmx.exposure.include=*
   ```
 
-- Apps started by the dashboard connect by their pid and need no setting. For
-  other apps that run on your machine, this coc-springboot setting in
-  `coc-settings.json`:
+- Apps started by the dashboard connect by their pid and need no setting.
+  Other apps connect through Attach to a remote app
+  (`spring-boot-dashboard.app.remote.attach`),
+  or through coc-springboot's `springboot.app.connect` picker, which offers the
+  apps on your machine only with this coc-springboot setting in
+  `coc-settings.json` (see `:help coc-springboot-local-apps`):
 
   ```json
   "boot-java.live-information.all-local-java-processes": true
   ```
 
-- For Debug and Attach debugger, [nvim-dap](https://github.com/mfussenegger/nvim-dap)
+- For Debug, Attach debugger and the debug half of Attach to a remote app,
+  [nvim-dap](https://github.com/mfussenegger/nvim-dap)
   in Neovim or [vimspector](https://github.com/puremourning/vimspector) in Vim
   and Neovim. Run needs no debugger.
 
@@ -69,7 +73,7 @@ Set these keys in `coc-settings.json` (`:CocConfig` opens it).
 | `spring.dashboard.memory-view.fetch-data.delay-in-milliseconds` | number | `5000` | Interval of the memory metrics poll. |
 | `spring.dashboard.memory-view.display-data.max-datapoints` | number | `10` | Width of the memory sparklines. |
 | `spring.dashboard.enableGutter` | string (`on`, `off`) | `"on"` | Signs on the bean definitions and request mappings. |
-| `spring.dashboard.debug.attachTimeout` | number | `30` | Seconds to wait for a debugger to attach; the app is killed after that. |
+| `spring.dashboard.debug.attachTimeout` | number | `30` | Seconds to wait for the debugger to attach (Debug, Attach debugger, Attach to a remote app). An app started with Debug is stopped after that; the others keep running. |
 | `spring.dashboard.stop.gracePeriod` | number | `10` | Seconds between Stop (SIGTERM) and the kill (SIGKILL). |
 | `spring.dashboard.launch.prompt` | string | `always` | When the launch panel opens: `always` (every Run and Debug), `first` (first time per app) or `never`. |
 | `spring.dashboard.layout.terminalHeight` | number | `65` | Percent (10 to 90) of the height of an app dashboard tab given to the terminal under the views. |
@@ -78,15 +82,17 @@ Set these keys in `coc-settings.json` (`:CocConfig` opens it).
 | `spring.dashboard.layout.fallbackSize` | number | `75` | Width and height, in percent of the screen, of the float a bean, an endpoint, a relation or an nvim-dap stop opens in when the app has no source window, or there is no app. |
 | `spring.dashboard.apps` | object | `{}` | Default launch settings per app name (`profiles`, `port`, `logLevel`, `logPackages`, `debugReport`, `vmArgs`, `args`, `env`), e.g. `{ "my-app": { "vmArgs": "-Xmx512m" } }`. |
 
-Connect and Disconnect (`spring-boot-dashboard.remoteapp.connect`, `spring-boot-dashboard.remoteapp.disconnect`)
-only serve the items of `boot-java.remote-apps`, a coc-springboot setting (see
-`:help coc-springboot-remote-apps` and `:help coc-spring-dashboard-remote`).
-Apps the dashboard starts are connected by themselves; any other app goes
-through Attach.
+Connect (`spring-boot-dashboard.app.remote.connect`) serves the items of `boot-java.remote-apps`, a
+coc-springboot setting (see `:help coc-springboot-remote-apps` and `:help coc-spring-dashboard-remote`).
+Disconnect (`spring-boot-dashboard.app.remote.disconnect`) disconnects any remote app the dashboard
+connected, from that list or by Attach to a remote app; a local app follows its own start and stop.
+Apps the dashboard starts connect by themselves; for any other app use
+Attach to a remote app.
 
-Attach to an app (`spring-boot-dashboard.localapp.attach`) connects the live data over
+Attach to a remote app (`spring-boot-dashboard.app.remote.attach`) connects the live data over
 JMX and attaches the debugger over JDWP for an app the dashboard did not start
-(another machine, a container, a forwarded port). A panel asks for the host,
+(another machine, a container, a forwarded port, a JVM you started yourself).
+An empty port skips that half. A panel asks for the host,
 the JMX port, the debug port and the project, and can copy the matching JVM
 options. See `:help coc-spring-dashboard-attach`.
 
