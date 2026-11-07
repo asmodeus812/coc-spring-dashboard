@@ -113,6 +113,21 @@ function keepAcrossTabs(view: coc.TreeView<any>): void {
 export const TREE_SPLIT: string = "botright 40vs";
 
 /**
+ * The description of a group: live data, all of it or only what the project defines, otherwise the defined data alone.
+ */
+export function groupDescription(live: boolean, definedOnly: boolean): string {
+    let description: string;
+    if (live && definedOnly) {
+        description = "live, defined";
+    } else if (live) {
+        description = "live, all";
+    } else {
+        description = "defined";
+    }
+    return description;
+}
+
+/**
  * The icon of an app or a group, filled when the app is running. An app the dashboard started has more states.
  */
 export function stateIcon(state: boolean | AppState): coc.TreeItemIcon {
@@ -144,7 +159,7 @@ export async function focusView(view: coc.TreeView<any>): Promise<boolean> {
             await view.show(TREE_SPLIT);
         }
     } else {
-        coc.window.showWarningMessage(`${component} is not in spring.dashboard.layout.components`);
+        void coc.window.showWarningMessage(`${component} is not in spring.dashboard.layout.components`);
     }
     return shown;
 }

@@ -68,7 +68,7 @@ export async function waitFor(server: Server, stopped: () => boolean = () => fal
 export function need(server: Server): boolean {
     const ok: boolean = ready(server);
     if (!ok) {
-        coc.window.showWarningMessage(NOT_READY[server]);
+        void coc.window.showWarningMessage(NOT_READY[server]);
     }
     return ok;
 }

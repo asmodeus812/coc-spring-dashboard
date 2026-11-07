@@ -1,5 +1,5 @@
 import * as coc from "coc.nvim";
-import * as path from "path";
+import * as path from "node:path";
 import { config } from "./util";
 
 /**
@@ -305,7 +305,15 @@ export class OutputTabs {
             // a complete layout leaves the focus alone, the user may already be in another window of the tab
             if (!complete) {
                 const stay: boolean = await tabOf(before) === tab;
-                await nvim.call("win_gotoid", [stay ? before : (attached ? views[0].windowId : terminal)]);
+                let focus: number | undefined;
+                if (stay) {
+                    focus = before;
+                } else if (attached) {
+                    focus = views[0].windowId;
+                } else {
+                    focus = terminal;
+                }
+                await nvim.call("win_gotoid", [focus]);
             }
         }
     }

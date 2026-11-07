@@ -1,8 +1,8 @@
 import * as coc from "coc.nvim";
-import * as cp from "child_process";
-import * as fs from "fs";
-import * as net from "net";
-import * as path from "path";
+import * as cp from "node:child_process";
+import * as fs from "node:fs";
+import * as net from "node:net";
+import * as path from "node:path";
 import { AttachTarget, DebugBackend, detectBackend } from "./debug";
 import { AppLauncher, AppState, AttachOptions, AttachProject, LaunchOptions, LaunchTarget, jmxArgs } from "./launch";
 import { OutputTabs, TabApp, sourceWindowOf } from "./output";
@@ -58,7 +58,7 @@ export class TerminalLauncher implements AppLauncher {
             message = `${app.name} settings unchanged`;
         } else {
             message = `${app.name} settings saved`;
-            coc.window.showInformationMessage(message);
+            void coc.window.showInformationMessage(message);
         }
         return message;
     }
@@ -89,7 +89,7 @@ export class TerminalLauncher implements AppLauncher {
             message = `Dashboard ${app.name}`;
         } else {
             message = `${app.name} not running`;
-            coc.window.showWarningMessage(message);
+            void coc.window.showWarningMessage(message);
         }
         return message;
     }
@@ -97,9 +97,9 @@ export class TerminalLauncher implements AppLauncher {
     public async attach(app: LaunchTarget): Promise<string> {
         const session: Session | undefined = this.sessions.get(app.mainClass);
         let message: string;
-        if (session === undefined || session.state !== "running" || session.jdwpPort === undefined) {
+        if (session?.state !== "running" || session.jdwpPort === undefined) {
             message = `${app.name} not started with Run`;
-            coc.window.showWarningMessage(message);
+            void coc.window.showWarningMessage(message);
         } else {
             const backend: DebugBackend | undefined = await detectBackend();
             if (backend === undefined) {
@@ -127,10 +127,10 @@ export class TerminalLauncher implements AppLauncher {
             message = "Attach cancelled";
         } else if (settings.jmxPort === "" && settings.debugPort === "") {
             message = "No port to attach";
-            coc.window.showWarningMessage(message);
+            void coc.window.showWarningMessage(message);
         } else if (settings.project === "") {
             message = "No project to attach";
-            coc.window.showWarningMessage(message);
+            void coc.window.showWarningMessage(message);
         } else {
             await rememberAttach(this.context.workspaceState, settings);
             // the tab first: the debugger finds the source window of the attach through it
@@ -164,7 +164,7 @@ export class TerminalLauncher implements AppLauncher {
             ok = false;
         }
         if (ok) {
-            coc.window.showInformationMessage(message);
+            void coc.window.showInformationMessage(message);
         }
         return { message, ok };
     }
@@ -179,16 +179,16 @@ export class TerminalLauncher implements AppLauncher {
             message = "Java server starting";
         } else if (!await reachable(s.host, Number(s.debugPort))) {
             message = `Nothing on ${s.host}:${s.debugPort}`;
-            coc.window.showWarningMessage(message);
+            void coc.window.showWarningMessage(message);
         } else {
             try {
                 await this.attachBackend(backend, { name: s.project, tab: attachKey(s.project), projectName: s.project, host: s.host, jdwpPort: Number(s.debugPort) });
                 ok = true;
-                coc.window.showInformationMessage(message);
+                void coc.window.showInformationMessage(message);
             } catch (e) {
                 failed(`attach ${s.project}`, e, undefined);
                 message = "Debugger not attached";
-                coc.window.showErrorMessage(message);
+                void coc.window.showErrorMessage(message);
             }
         }
         return { message, ok };
@@ -210,18 +210,21 @@ export class TerminalLauncher implements AppLauncher {
         return attached;
     }
 
-    public async stop(app: LaunchTarget, pid?: number): Promise<string> {
-        const session: Session | undefined = this.sessions.get(app.mainClass);
-        const target: number | undefined = session && session.state !== "stopped" ? session.pid : pid;
-        let message: string;
-        if (target === undefined) {
-            message = `${app.name} not running`;
-            coc.window.showWarningMessage(message);
-        } else {
-            this.terminate(target, session, app.name);
-            message = `Stopping ${app.name}`;
-        }
-        return message;
+    public stop(app: LaunchTarget, pid?: number): Promise<string> {
+        // the body runs right away and a throw rejects, like the body of an async function
+        return new Promise<string>(resolve => {
+            const session: Session | undefined = this.sessions.get(app.mainClass);
+            const target: number | undefined = session && session.state !== "stopped" ? session.pid : pid;
+            let message: string;
+            if (target === undefined) {
+                message = `${app.name} not running`;
+                void coc.window.showWarningMessage(message);
+            } else {
+                this.terminate(target, session, app.name);
+                message = `Stopping ${app.name}`;
+            }
+            resolve(message);
+        });
     }
 
     public state(app: LaunchTarget): AppState {
@@ -238,7 +241,7 @@ export class TerminalLauncher implements AppLauncher {
         let message: string;
         if (existing && existing.state !== "stopped") {
             message = `${app.name} already running`;
-            coc.window.showWarningMessage(message);
+            void coc.window.showWarningMessage(message);
         } else {
             message = await this.startNew(app, options, debug);
         }
@@ -261,7 +264,7 @@ export class TerminalLauncher implements AppLauncher {
                 message = await this.launch(app, session, values, debug).catch(e => {
                     this.setState(session, "stopped");
                     failed(`start ${app.name}`, e, undefined);
-                    coc.window.showErrorMessage(`${app.name} did not start`);
+                    void coc.window.showErrorMessage(`${app.name} did not start`);
                     return `${app.name} did not start`;
                 });
             }
@@ -323,7 +326,7 @@ export class TerminalLauncher implements AppLauncher {
             }
             failed(`attach ${app.name}`, e, undefined);
             message = wasWaiting ? `${app.name} stopped, no debugger` : "Debugger not attached";
-            coc.window.showErrorMessage(message);
+            void coc.window.showErrorMessage(message);
         }
         return message;
     }
@@ -352,7 +355,7 @@ export class TerminalLauncher implements AppLauncher {
     private terminate(pid: number, session: Session | undefined, name: string): void {
         signal(pid, false).then(async ok => {
             if (!ok && await alive(pid)) {
-                coc.window.showErrorMessage(`${name} not stopped`);
+                void coc.window.showErrorMessage(`${name} not stopped`);
             }
         }).catch(() => undefined);
         if (session?.killer) {
@@ -421,7 +424,7 @@ export class TerminalLauncher implements AppLauncher {
 
     private noDebugger(): string {
         const message: string = "No debugger found";
-        coc.window.showWarningMessage(message);
+        void coc.window.showWarningMessage(message);
         return message;
     }
 }
@@ -429,7 +432,9 @@ export class TerminalLauncher implements AppLauncher {
 const WINDOWS: boolean = process.platform === "win32";
 
 function quote(value: string): string {
-    return `"${value.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}"`;
+    const backslash: string = String.raw`\\`;
+    const doubleQuote: string = String.raw`\"`;
+    return `"${value.replace(/\\/g, backslash).replace(/"/g, doubleQuote)}"`;
 }
 
 /**

@@ -82,9 +82,13 @@ export class MemoryView implements coc.TreeDataProvider<MemoryElement>, coc.Disp
             return d === undefined ? [] : [d.heap, d.nonHeap, d.gc].map(s => ({ kind: "series" as const, key: `${key}/${s.label}`, processKey: key, series: s }));
         };
         const apps: MemoryNode[] = [...this.data.keys()].map(k => ({ kind: "app", key: k, processKey: k }));
-        return element === undefined
-            ? (apps.length > 0 ? apps : [hintOf(this.d, "memory", true)])
-            : (element.kind === "app" ? series(element.processKey) : []);
+        let children: MemoryElement[];
+        if (element === undefined) {
+            children = apps.length > 0 ? apps : [hintOf(this.d, "memory", true)];
+        } else {
+            children = element.kind === "app" ? series(element.processKey) : [];
+        }
+        return children;
     }
 
     public getTreeItem(node: MemoryElement): coc.TreeItem {
@@ -93,7 +97,9 @@ export class MemoryView implements coc.TreeDataProvider<MemoryElement>, coc.Disp
         }
         const s: Series | undefined = node.series;
         const current: string = s && s.values.length > 0 ? `${s.values[s.values.length - 1].toFixed(1)} ${s.unit}` : "-";
-        const label: string = s ? `${s.label.padEnd(9)} ${sparkline(s.values.length > 0 ? s.values : [0])} ${current}${s.extra ? ` ${s.extra}` : ""}` : this.data.get(node.processKey)?.name ?? node.processKey;
+        const extra: string = s?.extra ? ` ${s.extra}` : "";
+        const values: number[] = s && s.values.length > 0 ? s.values : [0];
+        const label: string = s ? `${s.label.padEnd(9)} ${sparkline(values)} ${current}${extra}` : this.data.get(node.processKey)?.name ?? node.processKey;
         const item = new coc.TreeItem(label, s ? coc.TreeItemCollapsibleState.None : coc.TreeItemCollapsibleState.Expanded);
         item.id = node.key;
         return item;

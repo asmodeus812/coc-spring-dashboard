@@ -55,15 +55,15 @@ export class LiveData implements coc.Disposable {
      */
     public async refresh(report: boolean = false): Promise<void> {
         if (report && this.apps.size === 0) {
-            coc.window.showWarningMessage("No connected app");
+            void coc.window.showWarningMessage("No connected app");
         } else {
             let errors: number = 0;
             await Promise.all([...this.apps.values()].map(a => this.api.refreshLiveProcessData({ processKey: a.process.processKey, endpoint: "beans" }).catch(e => { errors++; return failed(`refresh ${a.process.processKey}`, e, undefined); })));
             await this.init();
             if (report && (errors > 0 || this.listFailed)) {
-                coc.window.showErrorMessage("Live data not refreshed");
+                void coc.window.showErrorMessage("Live data not refreshed");
             } else if (report && !this.onScreen()) {
-                coc.window.showInformationMessage(`Refreshed ${this.apps.size} app${this.apps.size === 1 ? "" : "s"}`);
+                void coc.window.showInformationMessage(`Refreshed ${this.apps.size} app${this.apps.size === 1 ? "" : "s"}`);
             }
         }
     }
@@ -106,9 +106,9 @@ export class LiveData implements coc.Disposable {
         const app: LiveApp = {
             process,
             mainClass: mainClassOf(process),
-            beans: (Array.isArray(beans) ? beans : []).map((b: any) => typeof b === "string" ? b : (b?.id ?? b?.name ?? String(b))).sort(),
+            beans: (Array.isArray(beans) ? beans : []).map((b: any) => String(typeof b === "string" ? b : (b?.id ?? b?.name ?? b))).sort((a: string, b: string) => a.localeCompare(b)),
             mappings: Array.isArray(mappings) ? mappings : [],
-            port: port ? parseInt(String(port), 10) : undefined,
+            port: port ? Number.parseInt(String(port), 10) : undefined,
             // Spring Boot 3 masks the values of the env endpoint ("******") unless show-values allows them
             contextPath: String(contextPath ?? "").startsWith("/") ? String(contextPath) : undefined,
         };

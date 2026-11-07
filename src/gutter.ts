@@ -23,7 +23,7 @@ export class Gutter {
         const doc = coc.workspace.getDocument(bufnr);
         const enabled: boolean = config<string>("enableGutter", "on") === "on";
         const at = (kind: string, symbols: { location: coc.Location }[]) => symbols
-            .filter(s => doc != null && s.location.uri === doc.uri)
+            .filter(s => s.location.uri === doc?.uri)
             .map(s => ({ buffer: bufnr, group: GROUP, name: kind, lnum: s.location.range.start.line + 1, priority: 10 }));
         const signs = enabled && doc != null ? [...at("SpringBean", this.symbols.beans), ...at("SpringMapping", this.symbols.mappings)] : [];
         await coc.workspace.nvim.call("sign_unplace", [GROUP, { buffer: bufnr }]);
@@ -42,9 +42,9 @@ export function registerGutter(d: Dashboard): Gutter {
     const gutter = new Gutter(d.symbols);
     gutter.define().then(() => gutter.placeAll()).catch(() => undefined);
     d.context.subscriptions.push(
-        d.symbols.onDidChange(() => gutter.placeAll()),
+        d.symbols.onDidChange(() => gutter.placeAll().catch(() => undefined)),
         coc.events.on("BufEnter", async (bufnr: number) => { await gutter.place(bufnr); }),
-        coc.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration("spring.dashboard.enableGutter")) gutter.placeAll(); }),
+        coc.workspace.onDidChangeConfiguration(e => { if (e.affectsConfiguration("spring.dashboard.enableGutter")) gutter.placeAll().catch(() => undefined); }),
     );
     return gutter;
 }

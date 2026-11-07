@@ -53,7 +53,7 @@ export async function rememberAttach(state: coc.Memento, s: RemoteTarget): Promi
  * The options given to the attach command over the settings of the project.
  */
 export function withOptions(s: RemoteTarget, options: AttachOptions): RemoteTarget {
-    const text = (value: unknown, fallback: string): string => (value === undefined ? fallback : String(value).trim());
+    const text = (value: string | number | undefined, fallback: string): string => (value === undefined ? fallback : String(value).trim());
     return { ...s, host: text(options.host, s.host), jmxPort: text(options.jmxPort, s.jmxPort), debugPort: text(options.debugPort, s.debugPort) };
 }
 
@@ -120,5 +120,5 @@ async function copy(text: string): Promise<void> {
     for (const register of ["+", "\""]) {
         await coc.workspace.nvim.call("setreg", [register, text]).catch(() => undefined);
     }
-    coc.window.showInformationMessage("App startup options copied");
+    void coc.window.showInformationMessage("App startup options copied");
 }

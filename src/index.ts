@@ -28,7 +28,7 @@ async function start(context: coc.ExtensionContext): Promise<void> {
     const api = await waitForStsApi();
     if (api === undefined) {
         const inactive: string[] = ["coc-springboot", "coc-java"].filter(id => !coc.extensions.all.find(e => e.id === id)?.isActive);
-        coc.window.showWarningMessage(`${inactive.join(", ")} not active`);
+        void coc.window.showWarningMessage(`${inactive.join(", ")} not active`);
     } else {
         const live = new LiveData(api);
         const symbols = new Symbols(api);

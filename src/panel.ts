@@ -41,5 +41,5 @@ export async function showPanel<T>(title: string, action: string, initial: T, ro
  * A list as one line of text, quoted where `splitArgs` needs it to read it back.
  */
 export function joinArgs(items: string[]): string {
-    return items.map(i => (/[\s"'\\]/.test(i) ? `"${i.replace(/["\\]/g, c => `\\${c}`)}"` : i)).join(" ");
+    return items.map(i => (/[\s"'\\]/.test(i) ? `"${i.replace(/["\\]/g, String.raw`\$&`)}"` : i)).join(" ");
 }

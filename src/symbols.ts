@@ -19,7 +19,7 @@ export class StaticBean {
 
     constructor(location: coc.Location, name: string) {
         this.location = normalized(location);
-        this.id = name.match(/^@\+ '(.+?)'/)?.[1] ?? "unknown";
+        this.id = /^@\+ '(.+?)'/.exec(name)?.[1] ?? "unknown";
     }
 }
 
@@ -83,7 +83,7 @@ export class Symbols implements coc.Disposable {
         this.queue = this.queue.then(() => this.load()).catch(() => undefined);
         await this.queue;
         if (report && this.requestFailed) {
-            coc.window.showErrorMessage("Beans and endpoints not loaded");
+            void coc.window.showErrorMessage("Beans and endpoints not loaded");
         }
     }
 
@@ -110,7 +110,7 @@ export class Symbols implements coc.Disposable {
     private refreshIn(ms: number): void {
         this.timer = setTimeout(() => {
             this.timer = undefined;
-            this.refresh();
+            void this.refresh();
         }, ms);
     }
 

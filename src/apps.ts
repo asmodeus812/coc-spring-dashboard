@@ -1,6 +1,6 @@
 import * as coc from "coc.nvim";
-import * as fs from "fs";
-import * as path from "path";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { Dashboard, focusView, registerView, stateIcon } from "./dashboard";
 import { AppLauncher, AppState, AttachProject, LaunchTarget } from "./launch";
 import { LiveApp, LiveData } from "./live";
@@ -59,7 +59,7 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
 
     private notify(message: string): void {
         if (!this.onScreen()) {
-            coc.window.showInformationMessage(message);
+            void coc.window.showInformationMessage(message);
         }
     }
 
@@ -88,9 +88,9 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
         this.emitter.fire(undefined);
         if (report && error !== undefined) {
             failed("resolve the apps", error, undefined);
-            coc.window.showErrorMessage("Apps not resolved");
+            void coc.window.showErrorMessage("Apps not resolved");
         } else if (report && this.apps.length === 0) {
-            coc.window.showWarningMessage(NOTHING_TO_PICK.any);
+            void coc.window.showWarningMessage(NOTHING_TO_PICK.any);
         } else if (report) {
             this.notify(`Found ${this.apps.length} app${this.apps.length === 1 ? "" : "s"}`);
         }
@@ -136,7 +136,8 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
     private describe(app: BootApp): string {
         const state: AppState = this.stateOf(app);
         const port: number | undefined = this.liveOf(app)?.port;
-        let text: string = `${state}${port ? ` :${port}` : ""}`;
+        const portText: string = port ? ` :${port}` : "";
+        let text: string = `${state}${portText}`;
         if (state === "waiting") {
             text = "waiting for debugger";
         } else if (state === "attached") {
@@ -246,7 +247,7 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
      */
     private async stopApp(app: BootApp): Promise<string> {
         const pid: string | undefined = this.liveOf(app)?.process.pid;
-        const result: string = await this.launcher.stop(app, pid ? parseInt(pid, 10) : undefined);
+        const result: string = await this.launcher.stop(app, pid ? Number.parseInt(pid, 10) : undefined);
         if (result.startsWith("Stopping ")) {
             this.notify(result);
         }
@@ -257,7 +258,7 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
         const app = await this.resolve(arg, "running");
         const live = app ? this.liveOf(app) : undefined;
         if (app && !live) {
-            coc.window.showWarningMessage(`${app.name} not connected`);
+            void coc.window.showWarningMessage(`${app.name} not connected`);
         }
         return live ? openUrl(formatUrl(live.port, live.contextPath)) : undefined;
     }
@@ -275,25 +276,34 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
         // an app attached as a remote app runs elsewhere: Run and Debug would start a second copy of it
         const attached: boolean = picked !== undefined && which === "stopped" && this.stateOf(picked) === "attached";
         if (attached) {
-            coc.window.showWarningMessage(`${picked?.name} is attached as a remote app`);
+            void coc.window.showWarningMessage(`${picked?.name} is attached as a remote app`);
             picked = undefined;
         } else if (picked === undefined && this.apps.length === 0) {
-            coc.window.showWarningMessage(NOTHING_TO_PICK.any);
+            void coc.window.showWarningMessage(NOTHING_TO_PICK.any);
         } else if (picked === undefined) {
-            const candidates: BootApp[] = [];
-            for (const app of this.apps) {
-                if (await this.accepts(app, which)) {
-                    candidates.push(app);
-                }
+            picked = await this.pick(which);
+        }
+        return picked;
+    }
+
+    /**
+     * The only app `which` accepts, otherwise the one picked from those it accepts; none accepted says so.
+     */
+    private async pick(which: AppFilter): Promise<BootApp | undefined> {
+        const candidates: BootApp[] = [];
+        for (const app of this.apps) {
+            if (await this.accepts(app, which)) {
+                candidates.push(app);
             }
-            if (candidates.length === 0) {
-                coc.window.showWarningMessage(NOTHING_TO_PICK[which]);
-            } else if (candidates.length === 1) {
-                picked = candidates[0];
-            } else {
-                const items = candidates.map(a => ({ label: a.name, description: this.describe(a), app: a }));
-                picked = (await coc.window.showQuickPick(items, { title: "Select an app", matchOnDescription: true }))?.app;
-            }
+        }
+        let picked: BootApp | undefined;
+        if (candidates.length === 0) {
+            void coc.window.showWarningMessage(NOTHING_TO_PICK[which]);
+        } else if (candidates.length === 1) {
+            picked = candidates[0];
+        } else {
+            const items = candidates.map(a => ({ label: a.name, description: this.describe(a), app: a }));
+            picked = (await coc.window.showQuickPick(items, { title: "Select an app", matchOnDescription: true }))?.app;
         }
         return picked;
     }

@@ -1,6 +1,6 @@
 import * as coc from "coc.nvim";
-import * as fs from "fs";
-import * as path from "path";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { LaunchTarget } from "./launch";
 import { javaCommand } from "./util";
 
@@ -33,12 +33,12 @@ export async function discoverProfiles(app: LaunchTarget): Promise<string[]> {
         for (const dir of [folder, path.join(folder, "config")]) {
             const files: string[] = fs.existsSync(dir) && fs.statSync(dir).isDirectory() ? fs.readdirSync(dir) : [];
             for (const file of files) {
-                const named: RegExpMatchArray | null = file.match(/^(application|bootstrap)-(.*)\.(properties|yml|yaml)$/);
+                const named: RegExpExecArray | null = /^(application|bootstrap)-(.*)\.(properties|yml|yaml)$/.exec(file);
                 if (named) {
                     found.add(named[2]);
                 }
             }
         }
     }
-    return [...found].sort();
+    return [...found].sort((a, b) => a.localeCompare(b));
 }

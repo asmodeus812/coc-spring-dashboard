@@ -88,15 +88,15 @@ export function registerRemote(d: Dashboard): void {
         const apps: RemoteApp[] = configured.filter(a => !connected.some(c => c.jmxurl === a.jmxurl));
         let picked: { label: string; app: RemoteApp } | undefined;
         if (configured.length === 0) {
-            coc.window.showWarningMessage("No remote app configured");
+            void coc.window.showWarningMessage("No remote app configured");
         } else if (apps.length === 0) {
-            coc.window.showWarningMessage("No remote app to connect");
+            void coc.window.showWarningMessage("No remote app to connect");
         } else {
             picked = await coc.window.showQuickPick(apps.map(row), { title: "Connect a remote app" });
             if (picked) {
                 connected.push({ ...picked.app, manualConnect: false });
                 await send();
-                coc.window.showInformationMessage(`Connecting ${label(picked.app)}`);
+                void coc.window.showInformationMessage(`Connecting ${label(picked.app)}`);
             }
         }
         return picked ? label(picked.app) : undefined;
@@ -106,13 +106,13 @@ export function registerRemote(d: Dashboard): void {
         const remote: RemoteApp[] = connected.filter(a => a.jmxurl !== undefined);
         let picked: { label: string; app: RemoteApp } | undefined;
         if (remote.length === 0) {
-            coc.window.showWarningMessage("No remote app connected");
+            void coc.window.showWarningMessage("No remote app connected");
         } else {
             picked = await coc.window.showQuickPick(remote.map(row), { title: "Disconnect a remote app" });
             if (picked) {
                 connected.splice(connected.indexOf(picked.app), 1);
                 await send();
-                coc.window.showInformationMessage(`Disconnected ${label(picked.app)}`);
+                void coc.window.showInformationMessage(`Disconnected ${label(picked.app)}`);
             }
         }
         return picked ? label(picked.app) : undefined;

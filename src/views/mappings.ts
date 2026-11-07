@@ -1,5 +1,5 @@
 import * as coc from "coc.nvim";
-import { AppGroup, Dashboard, HintNode, NodeCache, appGroups, findInView, hintItem, hintOf, registerView, stateIcon } from "../dashboard";
+import { AppGroup, Dashboard, HintNode, NodeCache, appGroups, findInView, hintItem, groupDescription, hintOf, registerView, stateIcon } from "../dashboard";
 import { LiveApp } from "../live";
 import { StaticEndpoint, endpointLabel } from "../symbols";
 import { formatUrl, openUrl } from "../util";
@@ -53,7 +53,13 @@ export class MappingsView implements coc.TreeDataProvider<MappingsElement> {
 
     public getChildren(element?: MappingsElement): MappingsElement[] {
         const groups: MappingsElement[] = this.groups();
-        return element === undefined ? (groups.length > 0 ? groups : [hintOf(this.d, "mappings", false)]) : (element.kind === "group" ? this.mappings(element) : []);
+        let children: MappingsElement[];
+        if (element === undefined) {
+            children = groups.length > 0 ? groups : [hintOf(this.d, "mappings", false)];
+        } else {
+            children = element.kind === "group" ? this.mappings(element) : [];
+        }
+        return children;
     }
 
     public getParent(element: MappingsElement): MappingsElement | undefined {
@@ -68,7 +74,7 @@ export class MappingsView implements coc.TreeDataProvider<MappingsElement> {
         item.id = element.key;
         if (element.kind === "group") {
             item.icon = stateIcon(element.live !== undefined);
-            item.description = element.live ? (this.showDefinedOnly ? "live, defined" : "live, all") : "defined";
+            item.description = groupDescription(element.live !== undefined, this.showDefinedOnly);
         } else {
             item.icon = { text: "↗", hlGroup: element.symbol ? "Function" : "Comment" };
             item.description = element.symbol ? "" : "no source";
@@ -108,7 +114,7 @@ export class MappingsView implements coc.TreeDataProvider<MappingsElement> {
         const mapping = this.resolve(arg);
         const live = mapping ? this.liveOf(mapping) : undefined;
         if (mapping && !live) {
-            coc.window.showWarningMessage(`${mapping.label} app not running`);
+            void coc.window.showWarningMessage(`${mapping.label} app not running`);
         }
         return mapping && live ? openUrl(formatUrl(live.port, live.contextPath, mapping.pattern)) : undefined;
     }
@@ -135,7 +141,13 @@ export class MappingsView implements coc.TreeDataProvider<MappingsElement> {
     }
 
     private resolve(arg?: MappingsElement | string): MappingNode | undefined {
-        return typeof arg === "string" ? this.find(arg) : (arg?.kind === "mapping" ? arg : undefined);
+        let resolved: MappingNode | undefined;
+        if (typeof arg === "string") {
+            resolved = this.find(arg);
+        } else {
+            resolved = arg?.kind === "mapping" ? arg : undefined;
+        }
+        return resolved;
     }
 }
 

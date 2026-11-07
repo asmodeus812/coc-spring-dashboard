@@ -110,6 +110,21 @@ export function launchArguments(s: LaunchSettings): LaunchArguments {
 }
 
 /**
+ * The server port as the panel shows it, the default port when none is set.
+ */
+function portText(port: string): string {
+    let text: string;
+    if (port === "") {
+        text = "default";
+    } else if (port === "0") {
+        text = "random (0)";
+    } else {
+        text = port;
+    }
+    return text;
+}
+
+/**
  * A list or the environment as one line of text.
  */
 function textOf(s: LaunchSettings, key: TextKey): string {
@@ -152,10 +167,11 @@ export class LaunchPanel {
     }
 
     private rows(s: LaunchSettings): Row[] {
+        const packages: string = s.logPackages ? ` ${s.logPackages}` : "";
         return [
             row("Profiles", s.profiles.join(", ") || "none", "profiles"),
-            row("Server port", s.port === "" ? "default" : (s.port === "0" ? "random (0)" : s.port), "port"),
-            row("Logging", `${s.logLevel || "unset"}${s.logPackages ? ` ${s.logPackages}` : ""} (debug report: ${s.debugReport ? "on" : "off"})`, "logging"),
+            row("Server port", portText(s.port), "port"),
+            row("Logging", `${s.logLevel || "unset"}${packages} (debug report: ${s.debugReport ? "on" : "off"})`, "logging"),
             row("JVM options", textOf(s, "vmArgs") || "none", "vmArgs"),
             row("Program args", textOf(s, "programArgs") || "none", "programArgs"),
             row("Environment", textOf(s, "envVars") || "none", "envVars"),
@@ -164,7 +180,7 @@ export class LaunchPanel {
     }
 
     private async edit(app: LaunchTarget, s: LaunchSettings, key: string): Promise<LaunchSettings> {
-        let result: LaunchSettings = s;
+        let result: LaunchSettings;
         if (key === "profiles") {
             result = await this.editProfiles(app, s);
         } else if (key === "port") {
@@ -207,7 +223,7 @@ export class LaunchPanel {
         ];
         const picked = await coc.window.showQuickPick(choices, { title: `Server port of ${app.name}` });
         let result: string = current;
-        if (picked !== undefined && picked.value === "number") {
+        if (picked?.value === "number") {
             const input: string | undefined = await coc.window.requestInput("Server port", /^\d+$/.test(current) && current !== "0" ? current : "");
             result = input !== undefined && /^\d+$/.test(input.trim()) ? input.trim() : current;
         } else if (picked !== undefined) {

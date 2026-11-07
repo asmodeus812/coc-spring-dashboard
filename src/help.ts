@@ -1,6 +1,6 @@
 import * as coc from "coc.nvim";
-import * as fs from "fs";
-import * as path from "path";
+import * as fs from "node:fs";
+import * as path from "node:path";
 
 /**
  * Makes `:help coc-spring-dashboard` work. coc does not put an extension on the runtimepath, and putting the extension folder
@@ -14,6 +14,6 @@ export async function registerHelp(context: coc.ExtensionContext): Promise<void>
     await fs.promises.copyFile(path.join(context.extensionPath, "doc", "coc-spring-dashboard.txt"), path.join(doc, "coc-spring-dashboard.txt"));
     await coc.workspace.nvim.command(`silent! helptags ${await coc.workspace.nvim.call("fnameescape", [doc])}`);
     // a single :set appends atomically; reading then writing the option would race with other extensions
-    const escaped: string = root.replace(/([ ,\\])/g, "\\$1");
+    const escaped: string = root.replace(/([ ,\\])/g, String.raw`\$1`);
     await coc.workspace.nvim.command(`set runtimepath-=${escaped} runtimepath+=${escaped}`);
 }

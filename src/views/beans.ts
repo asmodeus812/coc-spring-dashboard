@@ -1,6 +1,6 @@
 import * as coc from "coc.nvim";
 import { BootApp } from "../apps";
-import { AppGroup, Dashboard, HintNode, NodeCache, appGroups, findInView, hintItem, hintOf, registerView, stateIcon } from "../dashboard";
+import { AppGroup, Dashboard, HintNode, NodeCache, appGroups, findInView, hintItem, groupDescription, hintOf, registerView, stateIcon } from "../dashboard";
 import { LiveApp } from "../live";
 import { IndexBean } from "../sts";
 import { StaticBean } from "../symbols";
@@ -40,7 +40,13 @@ export class BeansView implements coc.TreeDataProvider<BeansElement> {
 
     public getChildren(element?: BeansElement): BeansElement[] {
         const groups: BeansElement[] = this.groups();
-        return element === undefined ? (groups.length > 0 ? groups : [hintOf(this.d, "beans", false)]) : (element.kind === "group" ? this.beans(element) : []);
+        let children: BeansElement[];
+        if (element === undefined) {
+            children = groups.length > 0 ? groups : [hintOf(this.d, "beans", false)];
+        } else {
+            children = element.kind === "group" ? this.beans(element) : [];
+        }
+        return children;
     }
 
     public getParent(element: BeansElement): BeansElement | undefined {
@@ -56,7 +62,7 @@ export class BeansView implements coc.TreeDataProvider<BeansElement> {
         item.id = element.key;
         if (element.kind === "group") {
             item.icon = stateIcon(element.live !== undefined);
-            item.description = element.live ? (this.showDefinedOnly ? "live, defined" : "live, all") : "defined";
+            item.description = groupDescription(element.live !== undefined, this.showDefinedOnly);
         } else {
             item.icon = { text: "◆", hlGroup: element.symbol ? "Function" : "Comment" };
             item.description = element.symbol ? "" : "no source";
@@ -119,9 +125,14 @@ export class BeansView implements coc.TreeDataProvider<BeansElement> {
     public async hierarchy(arg?: BeansElement | string): Promise<number> {
         const bean = this.resolve(arg);
         const indexed = bean ? await this.indexBean(bean) : undefined;
-        const types: string[] = indexed
-            ? [indexed.type, ...(indexed.supertypes ?? [])]
-            : (bean?.parent.live ? (await this.d.live.beanDetail(bean.parent.live, bean.id)).map(b => b?.type).filter(Boolean) : []);
+        let types: string[];
+        if (indexed) {
+            types = [indexed.type, ...(indexed.supertypes ?? [])];
+        } else if (bean?.parent.live) {
+            types = (await this.d.live.beanDetail(bean.parent.live, bean.id)).map(b => b?.type).filter(Boolean);
+        } else {
+            types = [];
+        }
         const entries: LocationEntry[] = types.map((t, i) => ({ location: i === 0 ? indexed?.location : undefined, text: `${"  ".repeat(i ? 1 : 0)}${t}` }));
         return bean ? showLocationList(`Hierarchy of ${bean.id}`, entries) : 0;
     }
@@ -134,13 +145,19 @@ export class BeansView implements coc.TreeDataProvider<BeansElement> {
         const statics: StaticBean[] = group.app ? this.d.symbols.under(this.d.symbols.beans, group.app.path) : this.d.symbols.beans;
         const ids: string[] = group.live
             ? group.live.beans.filter(id => !this.showDefinedOnly || statics.some(s => s.id === id))
-            : statics.map(s => s.id).sort();
+            : statics.map(s => s.id).sort((a, b) => a.localeCompare(b));
         return ids.map(id => this.cache.get<BeanNode>(`${group.key}/${id}`, () => ({ kind: "bean", key: `${group.key}/${id}`, id, parent: group })))
             .map(b => Object.assign(b, { symbol: statics.find(s => s.id === b.id) }));
     }
 
     private resolve(arg?: BeansElement | string): BeanNode | undefined {
-        return typeof arg === "string" ? this.find(arg) : (arg?.kind === "bean" ? arg : undefined);
+        let resolved: BeanNode | undefined;
+        if (typeof arg === "string") {
+            resolved = this.find(arg);
+        } else {
+            resolved = arg?.kind === "bean" ? arg : undefined;
+        }
+        return resolved;
     }
 
     private appOf(bean: BeanNode): BootApp | undefined {
