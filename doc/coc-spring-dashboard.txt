@@ -35,7 +35,7 @@ coc-spring-dashboard defines no key mappings. You use it through
 QUICKSTART                                   *coc-spring-dashboard-quickstart*
 
 Open the apps tree and start an app from it: >vim
-    :CocCommand spring-boot-dashboard.app.local.list
+    :CocCommand spring-boot-dashboard.list
 <
 The tree opens in a vertical split on the right. Pick an app and Run it, then
 open its dashboard with the actions key of the tree (`<Tab>` by default).
@@ -91,9 +91,9 @@ index changes.
 ==============================================================================
 VIEWS                                             *coc-spring-dashboard-views*
 
-SPRING APPS is opened with `spring-boot-dashboard.app.local.list`. The Beans,
-Mappings, Properties and Memory views are part of the dashboard of an app and
-are reached only through its tab, "Show app dashboard".
+SPRING APPS is opened with `spring-boot-dashboard.list`. The Beans, Mappings,
+Properties and Memory views are part of the dashboard of an app and are
+reached only through its tab, "Show app dashboard".
 |coc-spring-dashboard-commands|
 
 ==============================================================================
@@ -103,14 +103,18 @@ Every command that `:CocCommand` lists, by what you do. The other commands of
 the extension are actions of the trees and are described under
 |coc-spring-dashboard-actions|.
 
-A local app is a Spring Boot app of this workspace, one SPRING APPS lists. A
-remote app is any app the dashboard did not start: on another machine, in a
-container, or a JVM you started yourself.
+SPRING APPS lists the Spring Boot apps whose source is in this workspace,
+whether they run or not and whoever started them. A local app is one of them;
+the `app.local` commands work on it. A remote app is one you connect to by its
+address or from `boot-java.remote-apps`, with the `app.remote` commands; its
+source may or may not be in this workspace.
+
+Workspace ~
+  `spring-boot-dashboard.list`                 open SPRING APPS, the Spring
+                                               Boot apps of the workspace
+  `spring-boot-dashboard.refresh`              look for them again
 
 Local apps ~
-  `spring-boot-dashboard.app.local.list`       open SPRING APPS, the list of
-                                               the local apps
-  `spring-boot-dashboard.refresh`              look for the local apps again
   `spring-boot-dashboard.app.local.run`        start an app in a terminal and
                                                open its dashboard tab
   `spring-boot-dashboard.app.local.debug`      start an app under the debugger
@@ -153,8 +157,8 @@ Without a tree line the app commands ask which app to use.
 ------------------------------------------------------------------------------
 APPS                                               *coc-spring-dashboard-apps*
 
-One line per Spring Boot app of the workspace. The icon and description show
-the state of the app:
+One line per Spring Boot app whose source is in this workspace, whoever
+started it. The icon and description show its state:
 
   `○` stopped             not running
   `◐` starting            the JVM is being started
@@ -162,25 +166,42 @@ the state of the app:
   `●` running             running; `running :8080` shows the port when live
                         data is connected, also for apps started outside
   `◉` debugging           a debugger is attached
+  `◎` attached            connected with Attach to a remote app;
+                        `attached host:port` shows where it runs
 
-The tooltip shows the main class. `spring-boot-dashboard.refresh` reloads
-the list of apps.
+An app you started yourself on this machine shows as running once its live
+data is connected. An app you connected with Attach to a remote app shows as
+attached, on the lines of the project you picked in the attach panel. You
+cannot Run or Debug an attached app, so that it does not run twice, and Stop
+and Attach debugger leave it alone; disconnect it to work on it locally again.
+An app connected from `boot-java.remote-apps` shows as stopped, even when its
+source is in this workspace. The live data of a remote app shows in the views
+and in its dashboard tab.
+
+The tooltip shows the main class. `spring-boot-dashboard.refresh` reloads the
+list of apps.
 
 Run, Debug and Stop are real. Run and Debug open the launch panel, one
 quick pick per app with the action first and the settings below it: >
     Debug bootlab
-    > Debug with these settings
+    ▶ Debug with these settings
       Profiles       dev, local
       Server port    default
       Logging        INFO (debug report: off)
       JVM options    -Xmx512m
       Program args   none
       Environment    DB_URL=...
-      Reset to defaults
+      Reset to settings
 <
 Picking a setting edits it and returns to the panel, the action launches and
-`<Esc>` cancels. The settings are remembered per app (kept per workspace);
-until then they come from `spring.dashboard.apps`.
+`<Esc>` cancels. The panel edits the settings of the app,
+`spring.dashboard.launch.defaults` joins them at launch (see below). Picking
+the action remembers them per app (kept per workspace); until then they are
+the entry of the app in `spring.dashboard.launch.settings`. "Reset to
+settings" puts that entry back in the panel, picking the action then
+remembers it; `<Esc>` keeps what was remembered before. Once settings are
+remembered, a change to that entry takes effect only after "Reset to
+settings" and the action.
 
   Profiles        a multi-select of the profiles found like upstream does:
                   the `application-<p>` and `bootstrap-<p>` files (properties,
@@ -194,8 +215,8 @@ until then they come from `spring.dashboard.apps`.
   Logging         the root level (`-Dlogging.level.root`), per package levels
                   such as `com.example=DEBUG` (`-Dlogging.level.<pkg>`) and
                   the `--debug` auto-configuration report.
-  JVM options     free text, e.g. `-Xmx512m -Dfoo=bar`.
-  Program args    free text.
+  JVM options     separated by spaces, quotes group: `-Xmx512m -Dfoo=bar`.
+  Program args    separated by spaces, e.g. `--server.address=0.0.0.0`.
   Environment     `KEY=VALUE` pairs for the JVM.
 
 `spring.dashboard.launch.prompt` says when the panel opens: `always` (default,
@@ -205,11 +226,12 @@ the profiles list already open (also with `never`); a profile given as
 argument skips it. "Launch settings..." in the tree actions and
 `spring-boot-dashboard.app.local.settings` open the panel without launching.
 
-The app starts as a JVM named "Spring: <app>", with the JMX arguments the
-live data needs added for you. The classpath comes from the Java language
-server and is passed in an argument file in the storage folder of the
-extension. Each app gets a tab at the end of the tab line, its dashboard, with
-the working directory set to the project (`:tcd`):
+The app starts as a JVM named "Spring: <app>". The JMX port, host and
+project name the live data needs are added per run, the rest of what it needs
+is in the default `vmArgs` (see below). The classpath comes from the Java
+language server and is passed in an argument file in the storage folder of
+the extension. Each app gets a tab at the end of the tab line, its dashboard,
+with the working directory set to the project (`:tcd`):
 >
     +-----------+-----------+------------+----------+
     | BEANS     | MAPPINGS  | PROPERTIES | MEMORY   |   top,
@@ -279,13 +301,46 @@ counts as attached until its session is reset. If no debugger attaches within
 `spring.dashboard.debug.attachTimeout` seconds the JVM is killed. Ending the
 debug session in the debugger only detaches, the app keeps running.
 
-Defaults per app name, by the name shown in the tree: >json
-    "spring.dashboard.apps": {
-        "my-app": { "vmArgs": "-Xmx512m", "args": "--debug", "profiles": ["dev"] }
+Every launch combines two layers of the same keys: `profiles`, `port`,
+`logLevel`, `logPackages`, `debugReport`, `vmArgs`, `programArgs`, `envVars`.
+`spring.dashboard.launch.defaults` is the layer under every app, the settings
+of the app (the panel, or its entry in `spring.dashboard.launch.settings` by
+the name shown in the tree) go on top: >json
+    "spring.dashboard.launch.settings": {
+        "my-app": {
+            "profiles": ["dev"],
+            "vmArgs": ["-Xmx512m"],
+            "programArgs": ["--server.address=0.0.0.0"],
+            "envVars": { "DB_URL": "jdbc:h2:mem:dev" }
+        }
     }
 <
-Keys: `profiles`, `port`, `logLevel`, `logPackages`, `debugReport`, `vmArgs`,
-`args`, `env`.
+  `vmArgs`        the defaults, then the app's; an exact duplicate is
+                  dropped, otherwise the later option wins in the JVM.
+  `programArgs`   the defaults, then the app's; an app argument with the
+                  option name of a default (before `=`) replaces it.
+  `profiles`      the defaults, then the app's, each once.
+  `envVars`       per variable, the app's value wins.
+  others          a value the app sets replaces the default, an empty one
+                  (or `debugReport` off) keeps it.
+
+An app can add to a default list, not remove an entry from it. Setting a list
+in `spring.dashboard.launch.defaults` itself replaces its default list, keep
+the live data options below in a `vmArgs` of your own.
+
+The default `vmArgs` are the options the live data needs; the JMX port, the
+host and the project name are added per run: >
+    -Dcom.sun.management.jmxremote.authenticate=false
+    -Dcom.sun.management.jmxremote.ssl=false
+    -Dspring.jmx.enabled=true
+    -Dspring.application.admin.enabled=true
+    -Dmanagement.endpoints.jmx.exposure.include=*
+    -Dmanagement.endpoint.env.show-values=ALWAYS
+<
+The last one lets Spring Boot 3 show the values of the properties, in the
+Properties view and in the address Open in browser opens, instead of `******`.
+It also shows them to anyone who reaches the JMX port; remove it to keep the
+values hidden.
 
 Stop sends SIGTERM, so that Spring shuts down cleanly, and SIGKILL when the
 process is still there after `spring.dashboard.stop.gracePeriod` seconds. It
@@ -372,16 +427,30 @@ Press the actions key of the tree (`<Tab>` by default) on a line to get a
 menu of what you can do with it:
 
   Line             Actions ~
-  app              Run, Run with profile, Debug, Debug with profile,
-                   Launch settings..., Show app dashboard, Stop,
-                   Attach debugger (started with Run), Open in browser
-                   (with live data)
+  app              the actions that fit its state, see below
   bean             Go to definition (beans with source), Show
                    dependencies, Show injected into, Show hierarchy
   mapping          Go to definition (mappings with source), Open in
                    browser (running apps only)
   bean or mapping  Show all, Show defined
   group
+
+The actions of an app follow its state in SPRING APPS:
+
+  State                         Actions ~
+  `○` stopped                     Run, Run with profile, Debug, Debug with
+                                profile, Launch settings...
+  `◐` starting, waiting           Launch settings..., Show app dashboard,
+                                Stop
+  `●` running, started with Run   Launch settings..., Show app dashboard,
+                                Stop, Attach debugger, Open in browser
+  `●` running, started elsewhere  Launch settings..., Stop, Open in browser
+  `◉` debugging                   Launch settings..., Show app dashboard,
+                                Stop, Open in browser
+  `◎` attached                    none: the app runs elsewhere
+
+Open in browser shows only once the live data of the app is connected.
+Launch settings apply to the next start.
 
 ------------------------------------------------------------------------------
 SHOW ALL AND SHOW DEFINED                       *coc-spring-dashboard-defined*
@@ -478,26 +547,61 @@ what to attach to: >
        JMX port        9010  (live data; empty: skip)
        Debug port      5005  (debugger; empty: skip)
        Project         orders-service
-       Copy the start options
+       Copy app startup options
 <
 A row opens a one-line input, Project a pick of the Java projects of the
-workspace, and returns to the panel. Picking the first line attaches, Esc
-cancels. With one Java project the Project row is filled with it. The values
-are remembered in the workspace.
+workspace (an input while there are none), and returns to the panel. Picking
+the first line attaches, Esc cancels. With one Java project the Project row
+is filled with it. The panel saves nothing: an attach remembers the host and
+the ports per project (kept per workspace), also one started with the
+command arguments. Picking a project shows its values.
 
-Copy the start options puts the JVM options that match the panel on the
+Like the launch settings, two layers of the same keys:
+`spring.dashboard.attach.defaults` is the layer under every project, the
+values of the project (remembered, or its entry in
+`spring.dashboard.attach.settings`) go on top. A key the project sets replaces
+the default, an empty port too. An attach remembers the host and the ports
+only; the JVM options always come from the settings. Once an attach
+remembered them, the host and ports of the settings are no longer used for
+that project; change them in the panel or with the command arguments.
+Setting `jmxVmArgs` or `debugVmArgs` in `spring.dashboard.attach.defaults`
+replaces the default list, keep the live data options in it.
+
+  `host`          localhost by default.
+  `jmxPort`       9010 by default, the live data half.
+  `debugPort`     5005 by default, the debugger half.
+  `jmxVmArgs`     the JVM options Copy app startup options gives for the live
+                  data half.
+  `debugVmArgs`   the same for the debugger half.
+
+`${host}`, `${jmxPort}` and `${debugPort}` in the options are the values of
+the panel. For example: >json
+    "spring.dashboard.attach.settings": {
+        "orders-service": { "host": "10.0.0.5", "debugPort": "" }
+    }
+<
+
+Copy app startup options puts the JVM options that match the panel on the
 clipboard (register `+`) and the unnamed register, on one line separated by
-spaces, and says "Start options copied". Start the app with them. The half
-whose port is empty is left out. The options, one per line here: >
+spaces, and says "App startup options copied". Start the app with them. The
+options are the `debugVmArgs`, then the `jmxVmArgs` of the attach settings of
+the project, with the values of the panel filled in; the half whose port is
+empty is left out. With the default settings, one per line here: >
     -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
     -Dcom.sun.management.jmxremote.port=9010
     -Dcom.sun.management.jmxremote.rmi.port=9010
+    -Djava.rmi.server.hostname=localhost
     -Dcom.sun.management.jmxremote.authenticate=false
     -Dcom.sun.management.jmxremote.ssl=false
-    -Djava.rmi.server.hostname=127.0.0.1
     -Dspring.jmx.enabled=true
+    -Dspring.application.admin.enabled=true
     -Dmanagement.endpoints.jmx.exposure.include=*
+    -Dmanagement.endpoint.env.show-values=ALWAYS
 <
+After the JMX port options, the default `jmxVmArgs` are the options the live
+data needs, the same as the default `vmArgs` of the launch settings.
+|coc-spring-dashboard-apps|
+
 The live half needs the Spring Boot server, the debug half a debugger
 (nvim-dap or vimspector) and the Java server. A missing one is named and the
 other half still runs. A half that fails does not undo the other.
@@ -505,8 +609,10 @@ other half still runs. A half that fails does not undo the other.
 again.
 
 The command takes optional arguments, which skip the panel: host, JMX port,
-debug port and project. A missing one is the remembered value, an empty
-string skips that half: >
+debug port and project. Without a project the only Java project of the
+workspace is used; with several, name the project. A missing host or port is
+the value of the project (remembered, or from the settings), an empty string
+skips that half: >
     :CocCommand spring-boot-dashboard.app.remote.attach localhost 9010 5005 orders
 <
 Not to be mixed up with `spring-boot-dashboard.app.local.attach`, which only
@@ -518,7 +624,7 @@ OPEN IN BROWSER                                 *coc-spring-dashboard-browser*
 Open in browser on an app opens its root url, on a mapping it opens the url
 of the endpoint. The url follows `spring.dashboard.openUrl`, filled in with
 the port and context path the live data of the app reports, so both need
-its live data.
+its live data. A context path Spring hides as `******` counts as none.
 
 ==============================================================================
 MESSAGES                                       *coc-spring-dashboard-messages*
@@ -552,6 +658,11 @@ MESSAGES                                       *coc-spring-dashboard-messages*
 
 "... already running", "... not running"
     Run and Debug need a stopped app, Stop a running one.
+
+"... is attached as a remote app"
+    The app runs elsewhere and is connected with Attach to a remote app.
+    Disconnect it (`spring-boot-dashboard.app.remote.disconnect`) to Run or
+    Debug it here.
 
 "... not started with Run"
     Attach debugger works on an app that Run started.

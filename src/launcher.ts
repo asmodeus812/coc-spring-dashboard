@@ -6,7 +6,8 @@ import * as path from "path";
 import { AttachTarget, DebugBackend, detectBackend } from "./debug";
 import { AppLauncher, AppState, AttachOptions, AttachProject, LaunchOptions, LaunchTarget, jmxArgs } from "./launch";
 import { OutputTabs, TabApp, sourceWindowOf } from "./output";
-import { AttachPanel, AttachSettings, LaunchArguments, LaunchPanel, LaunchSettings, defaultSettings, launchArguments } from "./settings";
+import { AttachPanel, RemoteTarget, attachSettings, rememberAttach, withOptions } from "./attach-settings";
+import { LaunchArguments, LaunchPanel, LaunchSettings, isRemembered, launchArguments, launchSettings, withLaunchDefaults } from "./launch-settings";
 import { connectJmx, connectPid, disconnectPid } from "./remote";
 import { need, waitFor } from "./ready";
 import { config, failed, javaCommand } from "./util";
@@ -37,8 +38,8 @@ export class TerminalLauncher implements AppLauncher {
     private readonly attachPanel: AttachPanel;
 
     constructor(private readonly context: coc.ExtensionContext, private readonly output: OutputTabs) {
-        this.panel = new LaunchPanel(context);
-        this.attachPanel = new AttachPanel(context);
+        this.panel = new LaunchPanel(context.workspaceState);
+        this.attachPanel = new AttachPanel(context.workspaceState);
         context.subscriptions.push(coc.window.onDidCloseTerminal(t => this.closed(t)), this.emitter);
     }
 
@@ -51,7 +52,7 @@ export class TerminalLauncher implements AppLauncher {
     }
 
     public async configure(app: LaunchTarget): Promise<string> {
-        const settings: LaunchSettings | undefined = await this.panel.open(app, "Save");
+        const settings: LaunchSettings | undefined = await this.panel.open(app, "Save", launchSettings(this.context.workspaceState, app));
         let message: string;
         if (settings === undefined) {
             message = `${app.name} settings unchanged`;
@@ -113,12 +114,14 @@ export class TerminalLauncher implements AppLauncher {
     /**
      * Attaches to an app the dashboard did not start: the live data over JMX and the debugger over JDWP, each when its port
      * is set, one failing does not undo the other. The dashboard tab of the app opens with the four views. Any option
-     * skips the panel, the missing ones are the remembered values.
+     * skips the panel, the missing ones come from the settings of the project (the only one when none is given). An attach
+     * remembers its host and ports per project.
      */
     public async attachRemote(options: AttachOptions, projects: AttachProject[]): Promise<string> {
         const given: boolean = Object.values(options).some(v => v !== undefined);
         const names: string[] = [...new Set(projects.map(p => p.name))];
-        const settings: AttachSettings | undefined = given ? withSaved(options, this.attachPanel.saved()) : await this.attachPanel.open(names);
+        const project: string = String(options.project ?? (names.length === 1 ? names[0] : "")).trim();
+        const settings: RemoteTarget | undefined = given ? withOptions(attachSettings(this.context.workspaceState, project), options) : await this.attachPanel.open(names);
         let message: string;
         if (settings === undefined) {
             message = "Attach cancelled";
@@ -129,9 +132,7 @@ export class TerminalLauncher implements AppLauncher {
             message = "No project to attach";
             coc.window.showWarningMessage(message);
         } else {
-            if (given) {
-                await this.attachPanel.remember(settings);
-            }
+            await rememberAttach(this.context.workspaceState, settings);
             // the tab first: the debugger finds the source window of the attach through it
             const project: AttachProject | undefined = projects.find(p => p.name === settings.project);
             const tab: TabApp = { key: attachKey(settings.project), name: settings.project, folder: project?.path ?? coc.workspace.root };
@@ -149,11 +150,11 @@ export class TerminalLauncher implements AppLauncher {
         return message;
     }
 
-    private async attachLive(s: AttachSettings): Promise<{ message: string; ok: boolean }> {
+    private async attachLive(s: RemoteTarget): Promise<{ message: string; ok: boolean }> {
         let message: string = `${s.project}: live data connecting`;
         let ok: boolean = true;
         if (need("spring")) {
-            await connectJmx(s.host, s.jmxPort).catch(e => {
+            await connectJmx(s.host, s.jmxPort, s.project).catch(e => {
                 failed(`connect ${s.host}:${s.jmxPort}`, e, undefined);
                 message = `${s.project}: live data not connected`;
                 ok = false;
@@ -168,7 +169,7 @@ export class TerminalLauncher implements AppLauncher {
         return { message, ok };
     }
 
-    private async attachDebugger(s: AttachSettings): Promise<{ message: string; ok: boolean }> {
+    private async attachDebugger(s: RemoteTarget): Promise<{ message: string; ok: boolean }> {
         const backend: DebugBackend | undefined = await detectBackend();
         let message: string = `${s.project}: debugger attached`;
         let ok: boolean = false;
@@ -277,8 +278,8 @@ export class TerminalLauncher implements AppLauncher {
         const jdwpPort: number = await freePort();
         const jmxPort: number = await freePort();
 
-        const launch: LaunchArguments = launchArguments(settings);
-        const argfile: string = this.writeArgfile(app, modulePaths ?? [], classPaths ?? [], launch.args);
+        const launch: LaunchArguments = launchArguments(withLaunchDefaults(settings));
+        const argfile: string = this.writeArgfile(app, modulePaths ?? [], classPaths ?? [], launch.programArgs);
         const vmArgs: string[] = [
             ...launch.vmArgs,
             ...jmxArgs(app.projectName, jmxPort),
@@ -286,7 +287,7 @@ export class TerminalLauncher implements AppLauncher {
             `@${argfile}`,
         ];
         const origin: number = await this.output.origin();
-        const terminal: coc.Terminal = await coc.window.createTerminal({ name: `Spring: ${app.name}`, shellPath: java, shellArgs: vmArgs, cwd: app.path, env: launch.env });
+        const terminal: coc.Terminal = await coc.window.createTerminal({ name: `Spring: ${app.name}`, shellPath: java, shellArgs: vmArgs, cwd: app.path, env: launch.envVars });
         session.terminal = terminal;
         session.jdwpPort = jdwpPort;
         session.pid = await terminal.processId;
@@ -385,20 +386,17 @@ export class TerminalLauncher implements AppLauncher {
     }
 
     /**
-     * The settings of a launch: the panel every time (the default), the first time per app or never, as
-     * `spring.dashboard.launch.prompt` says, otherwise the remembered ones. A profile of the command replaces the profiles, the "with profile" commands
-     * open the panel with the profiles first. Undefined when cancelled.
+     * The settings of the app for a launch, before `launch.defaults`: through the panel every time (the default), the
+     * first time per app or never, as `spring.dashboard.launch.prompt` says. A profile of the command replaces the
+     * profiles of the app, the "with profile" commands open the panel with the profiles first. Undefined when cancelled.
      */
     private async settings(app: LaunchTarget, action: string, options: LaunchOptions): Promise<LaunchSettings | undefined> {
         const mode: string = config<string>("launch.prompt", "always");
-        const saved: LaunchSettings | undefined = this.panel.saved(app);
-        const initial: LaunchSettings = { ...(saved ?? defaultSettings(app)) };
-        if (options.profile !== undefined) {
-            initial.profiles = options.profile.split(",").map(p => p.trim()).filter(p => p.length > 0);
-        }
+        const own: LaunchSettings = launchSettings(this.context.workspaceState, app);
+        const initial: LaunchSettings = options.profile === undefined ? own : { ...own, profiles: options.profile.split(",").map(p => p.trim()).filter(p => p.length > 0) };
         let settings: LaunchSettings | undefined;
-        if (options.pickProfiles || mode === "always" || (mode !== "never" && saved === undefined)) {
-            settings = await this.panel.open(app, action, options.pickProfiles ? "profiles" : undefined, initial);
+        if (options.pickProfiles || mode === "always" || (mode !== "never" && !isRemembered(this.context.workspaceState, app))) {
+            settings = await this.panel.open(app, action, initial, options.pickProfiles ? "profiles" : undefined);
         } else {
             settings = initial;
         }
@@ -446,19 +444,6 @@ function freePort(): Promise<number> {
             server.close(() => resolve(port));
         });
     });
-}
-
-/**
- * The given attach options over the remembered settings.
- */
-function withSaved(options: AttachOptions, saved: AttachSettings): AttachSettings {
-    const text = (value: unknown, fallback: string): string => value === undefined ? fallback : String(value).trim();
-    return {
-        host: text(options.host, saved.host),
-        jmxPort: text(options.jmxPort, saved.jmxPort),
-        debugPort: text(options.debugPort, saved.debugPort),
-        project: text(options.project, saved.project),
-    };
 }
 
 /**

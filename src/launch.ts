@@ -12,7 +12,7 @@ export interface LaunchTarget {
 }
 
 /**
- * How a launch differs from the remembered settings: profiles that replace them, or the panel opened with the profiles.
+ * How a launch differs from the settings of the app (remembered or configured): profiles that replace them, or the panel opened with the profiles.
  */
 export interface LaunchOptions {
     profile?: string;
@@ -20,8 +20,8 @@ export interface LaunchOptions {
 }
 
 /**
- * Where to attach to an app the dashboard did not start. A part that is not given comes from the attach panel, which is
- * skipped when any part is given.
+ * Where to attach to an app the dashboard did not start. Any part given skips the attach panel, a part that is not
+ * given comes from the settings of the project.
  */
 export interface AttachOptions {
     host?: string;
@@ -41,7 +41,7 @@ export interface AttachProject {
 /**
  * Where an app is in its life, as far as the dashboard started it.
  */
-export type AppState = "starting" | "waiting" | "running" | "debugging" | "stopped";
+export type AppState = "starting" | "waiting" | "running" | "debugging" | "attached" | "stopped";
 
 /**
  * Starts, debugs and stops the apps. Every command, tree action and app state goes through it.
@@ -68,19 +68,14 @@ export interface AppLauncher {
 }
 
 /**
- * The JMX setup the spring boot language server connects through, the same set upstream adds to every launch: a remote
- * JMX port without authentication on localhost, spring's JMX beans and admin endpoint, and the project name.
+ * The per run part of the JMX setup the spring boot language server connects through: the port, the host and the
+ * project name. The rest comes with the JVM options of `launch.defaults`.
  */
 export function jmxArgs(projectName: string, jmxPort: number): string[] {
     return [
         "-Dcom.sun.management.jmxremote",
         `-Dcom.sun.management.jmxremote.port=${jmxPort}`,
-        "-Dcom.sun.management.jmxremote.authenticate=false",
-        "-Dcom.sun.management.jmxremote.ssl=false",
         "-Djava.rmi.server.hostname=localhost",
-        "-Dspring.jmx.enabled=true",
-        "-Dspring.application.admin.enabled=true",
-        "-Dmanagement.endpoints.jmx.exposure.include=*",
         `-Dspring.boot.project.name=${projectName}`,
     ];
 }

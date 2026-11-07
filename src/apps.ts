@@ -4,6 +4,7 @@ import * as path from "path";
 import { Dashboard, focusView, registerView, stateIcon } from "./dashboard";
 import { AppLauncher, AppState, AttachProject, LaunchTarget } from "./launch";
 import { LiveApp, LiveData } from "./live";
+import { attachedAddress, onDidChangeRemote } from "./remote";
 import { need, ready, waitFor } from "./ready";
 import { failed, formatUrl, javaCommand, openUrl, projectRoot } from "./util";
 
@@ -47,6 +48,7 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
 
     constructor(private readonly live: LiveData, private readonly launcher: AppLauncher) {
         live.onDidChange(() => this.emitter.fire(undefined));
+        onDidChangeRemote(() => this.emitter.fire(undefined));
         launcher.onDidChangeState(() => this.emitter.fire(undefined));
     }
 
@@ -110,11 +112,17 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
     }
 
     /**
-     * The state of an app: the dashboard's own for an app it started, running for an app that only has a live process.
+     * The launcher's state for an app the dashboard started, otherwise running with a live process on this machine, or
+     * attached when Attach to a remote app connected its project.
      */
     public stateOf(app: BootApp): AppState {
-        const state: AppState = this.launcher.state(app);
-        return state === "stopped" && this.liveOf(app) ? "running" : state;
+        let state: AppState = this.launcher.state(app);
+        if (state === "stopped" && this.liveOf(app)) {
+            state = "running";
+        } else if (state === "stopped" && attachedAddress(app.projectName) !== undefined) {
+            state = "attached";
+        }
+        return state;
     }
 
     /**
@@ -128,7 +136,13 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
     private describe(app: BootApp): string {
         const state: AppState = this.stateOf(app);
         const port: number | undefined = this.liveOf(app)?.port;
-        return state === "waiting" ? "waiting for debugger" : `${state}${port ? ` :${port}` : ""}`;
+        let text: string = `${state}${port ? ` :${port}` : ""}`;
+        if (state === "waiting") {
+            text = "waiting for debugger";
+        } else if (state === "attached") {
+            text = `attached ${attachedAddress(app.projectName)}`;
+        }
+        return text;
     }
 
     public getChildren(element?: BootApp): BootApp[] {
@@ -144,18 +158,25 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
         return item;
     }
 
+    /**
+     * The actions of an app, those that fit its state: a stopped app starts, a started one stops, shows its dashboard,
+     * takes the debugger; an attached app runs elsewhere and has none of them.
+     */
     public resolveActions(_item: coc.TreeItem, app: BootApp): coc.TreeItemAction<BootApp>[] {
+        const state: AppState = this.stateOf(app);
+        const stopped: boolean = state === "stopped";
+        const startedHere: boolean = this.launcher.state(app) !== "stopped";
         return [
-            { title: "Run", handler: a => this.run(a) },
-            { title: "Run with profile", handler: a => this.runWithProfile(a) },
-            { title: "Debug", handler: a => this.debug(a) },
-            { title: "Debug with profile", handler: a => this.debugWithProfile(a) },
-            { title: "Launch settings...", handler: a => this.settings(a) },
-            { title: "Show app dashboard", handler: a => this.output(a) },
-            { title: "Stop", handler: a => this.stop(a) },
-            ...(this.launcher.state(app) === "running" ? [{ title: "Attach debugger", handler: (a: BootApp) => this.attach(a) }] : []),
-            ...(this.liveOf(app) ? [{ title: "Open in browser", handler: (a: BootApp) => this.open(a) }] : []),
-        ].map(a => ({ title: a.title, handler: async (x: BootApp) => { await a.handler(x); } }));
+            { title: "Run", when: stopped, handler: (a: BootApp) => this.run(a) },
+            { title: "Run with profile", when: stopped, handler: (a: BootApp) => this.runWithProfile(a) },
+            { title: "Debug", when: stopped, handler: (a: BootApp) => this.debug(a) },
+            { title: "Debug with profile", when: stopped, handler: (a: BootApp) => this.debugWithProfile(a) },
+            { title: "Launch settings...", when: state !== "attached", handler: (a: BootApp) => this.settings(a) },
+            { title: "Show app dashboard", when: startedHere, handler: (a: BootApp) => this.output(a) },
+            { title: "Stop", when: !stopped && state !== "attached", handler: (a: BootApp) => this.stop(a) },
+            { title: "Attach debugger", when: this.launcher.state(app) === "running", handler: (a: BootApp) => this.attach(a) },
+            { title: "Open in browser", when: this.liveOf(app) !== undefined, handler: (a: BootApp) => this.open(a) },
+        ].filter(a => a.when).map(a => ({ title: a.title, handler: async (x: BootApp) => { await a.handler(x); } }));
     }
 
     public async run(arg?: BootApp | string, profile?: string): Promise<string | undefined> {
@@ -251,7 +272,12 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
             await this.load(false);
         }
         let picked: BootApp | undefined = typeof arg === "string" ? this.apps.find(a => a.name === arg || a.mainClass === arg) : arg;
-        if (picked === undefined && this.apps.length === 0) {
+        // an app attached as a remote app runs elsewhere: Run and Debug would start a second copy of it
+        const attached: boolean = picked !== undefined && which === "stopped" && this.stateOf(picked) === "attached";
+        if (attached) {
+            coc.window.showWarningMessage(`${picked?.name} is attached as a remote app`);
+            picked = undefined;
+        } else if (picked === undefined && this.apps.length === 0) {
             coc.window.showWarningMessage(NOTHING_TO_PICK.any);
         } else if (picked === undefined) {
             const candidates: BootApp[] = [];
@@ -278,7 +304,7 @@ export class AppsView implements coc.TreeDataProvider<BootApp> {
         if (which === "stopped") {
             accepted = state === "stopped";
         } else if (which === "running") {
-            accepted = state !== "stopped";
+            accepted = state !== "stopped" && state !== "attached";
         } else if (which === "attachable") {
             accepted = state === "running";
         } else if (which === "output") {
@@ -301,7 +327,7 @@ export function registerApps(d: Dashboard): AppsView {
     d.live.onScreen = () => [...d.views.values()].some(v => v.visible);
     const id = (name: string) => `spring-boot-dashboard.${name}`;
     d.context.subscriptions.push(
-        coc.commands.registerCommand(id("app.local.list"), () => focusView(view)),
+        coc.commands.registerCommand(id("list"), () => focusView(view)),
         coc.commands.registerCommand(id("refresh"), () => provider.refresh(true)),
         coc.commands.registerCommand(id("app.local.run"), (arg?: BootApp | string, profile?: string) => provider.run(arg, profile)),
         coc.commands.registerCommand(id("app.local.runWithProfile"), (arg?: BootApp | string, profile?: string) => provider.runWithProfile(arg, profile), undefined, true),

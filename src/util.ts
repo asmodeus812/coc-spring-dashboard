@@ -51,6 +51,8 @@ export function formatUrl(port: number | undefined, contextPath: string | undefi
 }
 
 export async function openUrl(url: string): Promise<string> {
+    channel = channel ?? coc.window.createOutputChannel("Spring Dashboard");
+    channel.appendLine(`[${new Date().toISOString()}] open ${url}`);
     await coc.workspace.nvim.call("coc#ui#open_url", [url]);
     return url;
 }

@@ -121,6 +121,8 @@ export function stateIcon(state: boolean | AppState): coc.TreeItemIcon {
         icon = { text: "◐", hlGroup: "DiagnosticWarn" };
     } else if (state === "debugging") {
         icon = { text: "◉", hlGroup: "DiagnosticInfo" };
+    } else if (state === "attached") {
+        icon = { text: "◎", hlGroup: "DiagnosticHint" };
     } else if (state === true || state === "running") {
         icon = { text: "●", hlGroup: "DiagnosticOk" };
     } else {

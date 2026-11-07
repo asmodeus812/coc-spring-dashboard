@@ -21,10 +21,12 @@ Using it inside Neovim is described in the help page:
   not running".
 - For live data (running state, live beans and mappings, properties,
   memory), a running app with `spring-boot-starter-actuator` on its
-  classpath, started with these JVM arguments:
+  classpath, started with these JVM arguments (the dashboard adds them to the
+  apps it starts, from the `vmArgs` of `spring.dashboard.launch.defaults`):
 
   ```
   -Dspring.jmx.enabled=true -Dmanagement.endpoints.jmx.exposure.include=*
+  -Dmanagement.endpoint.env.show-values=ALWAYS
   ```
 
 - Apps started by the dashboard connect by their pid and need no setting.
@@ -80,7 +82,10 @@ Set these keys in `coc-settings.json` (`:CocConfig` opens it).
 | `spring.dashboard.layout.components` | array | all five | The panes of an app dashboard tab: `beans`, `endpoints`, `properties`, `memory`, `terminal`. They keep their fixed places (views side by side on top, terminal below); a left out view is not shown anywhere, a left out terminal keeps running without a window. |
 | `spring.dashboard.layout.cleanup` | string (`always`, `keep`) | `"always"` | When an app stops: close its dashboard tab, or keep it for the next run. |
 | `spring.dashboard.layout.fallbackSize` | number | `75` | Width and height, in percent of the screen, of the float a bean, an endpoint, a relation or an nvim-dap stop opens in when the app has no source window, or there is no app. |
-| `spring.dashboard.apps` | object | `{}` | Default launch settings per app name (`profiles`, `port`, `logLevel`, `logPackages`, `debugReport`, `vmArgs`, `args`, `env`), e.g. `{ "my-app": { "vmArgs": "-Xmx512m" } }`. |
+| `spring.dashboard.launch.defaults` | object | the live data options | The launch settings under every app: `profiles`, `port`, `logLevel`, `logPackages`, `debugReport`, `vmArgs`, `programArgs`, `envVars`. The default `vmArgs` are the options the live data needs, including `-Dmanagement.endpoint.env.show-values=ALWAYS` so that Spring Boot 3 shows property values instead of `******`; the rest is empty. |
+| `spring.dashboard.launch.settings` | object | `{}` | Launch settings per app name, used until the launch panel remembers others, on top of `spring.dashboard.launch.defaults`: lists are appended without duplicates (`programArgs` replace a default with the same option name), `envVars` is merged per key, a single value replaces the default. E.g. `{ "my-app": { "vmArgs": ["-Xmx512m"] } }`. |
+| `spring.dashboard.attach.defaults` | object | `localhost`, `9010`, `5005` | The attach settings under every project: `host`, `jmxPort`, `debugPort` (an empty port skips that half), and `debugVmArgs`, `jmxVmArgs`, the JVM options Copy app startup options gives for the debugger and the live data half, with `${host}`, `${jmxPort}`, `${debugPort}` filled in. The default `jmxVmArgs` are the JMX port options followed by the live data options. |
+| `spring.dashboard.attach.settings` | object | `{}` | Attach settings per project name, on top of `spring.dashboard.attach.defaults`: a key that is set replaces the default. The host and ports apply until an attach to the project remembers others; the JVM options always come from the settings (here or `spring.dashboard.attach.defaults`). E.g. `{ "orders-service": { "host": "10.0.0.5" } }`. |
 
 Connect (`spring-boot-dashboard.app.remote.connect`) serves the items of `boot-java.remote-apps`, a
 coc-springboot setting (see `:help coc-springboot-remote-apps` and `:help coc-spring-dashboard-remote`).

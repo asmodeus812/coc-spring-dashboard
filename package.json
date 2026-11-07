@@ -126,10 +126,69 @@
                     "maximum": 100,
                     "description": "Width and height, in percent of the screen, of the float a bean, an endpoint, a relation or an nvim-dap stop opens in when the app has no source window, or there is no app"
                 },
-                "spring.dashboard.apps": {
+                "spring.dashboard.launch.defaults": {
+                    "type": "object",
+                    "default": {
+                        "profiles": [],
+                        "port": "",
+                        "logLevel": "",
+                        "logPackages": "",
+                        "debugReport": false,
+                        "vmArgs": [
+                            "-Dcom.sun.management.jmxremote.authenticate=false",
+                            "-Dcom.sun.management.jmxremote.ssl=false",
+                            "-Dspring.jmx.enabled=true",
+                            "-Dspring.application.admin.enabled=true",
+                            "-Dmanagement.endpoints.jmx.exposure.include=*",
+                            "-Dmanagement.endpoint.env.show-values=ALWAYS"
+                        ],
+                        "programArgs": [],
+                        "envVars": {}
+                    },
+                    "description": "The launch settings under every app's own: profiles, server port (empty: the app's own, 0: random), root log level, per package log levels (com.example=DEBUG), debug report, JVM options, program arguments, environment. The default JVM options feed the live data, show-values=ALWAYS lets Spring Boot 3 report property values instead of ******. The JMX port, host and project name are added per run",
+                    "properties": {
+                        "profiles": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "port": {
+                            "type": "string"
+                        },
+                        "logLevel": {
+                            "type": "string"
+                        },
+                        "logPackages": {
+                            "type": "string"
+                        },
+                        "debugReport": {
+                            "type": "boolean"
+                        },
+                        "vmArgs": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "programArgs": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "envVars": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "spring.dashboard.launch.settings": {
                     "type": "object",
                     "default": {},
-                    "description": "Default launch settings per app name, used until the launch panel remembers others: { \"my-app\": { \"profiles\": [\"dev\"], \"port\": \"0\", \"logLevel\": \"INFO\", \"logPackages\": \"com.example=DEBUG\", \"debugReport\": false, \"vmArgs\": \"-Xmx512m\", \"args\": \"\", \"env\": \"KEY=VALUE\" } }",
+                    "description": "Launch settings per app name, used until the launch panel remembers others, on top of spring.dashboard.launch.defaults: JVM options are appended without exact duplicates, program arguments (programArgs) replace a default with the same option name, profiles are added, the environment variables (envVars) are merged per key, a single value replaces the default. { \"my-app\": { \"profiles\": [\"dev\"], \"port\": \"0\", \"vmArgs\": [\"-Xmx512m\"] } }",
                     "additionalProperties": {
                         "type": "object",
                         "properties": {
@@ -152,13 +211,99 @@
                                 "type": "boolean"
                             },
                             "vmArgs": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "programArgs": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "envVars": {
+                                "type": "object",
+                                "additionalProperties": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "spring.dashboard.attach.defaults": {
+                    "type": "object",
+                    "default": {
+                        "host": "localhost",
+                        "jmxPort": "9010",
+                        "debugPort": "5005",
+                        "debugVmArgs": [
+                            "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:${debugPort}"
+                        ],
+                        "jmxVmArgs": [
+                            "-Dcom.sun.management.jmxremote.port=${jmxPort}",
+                            "-Dcom.sun.management.jmxremote.rmi.port=${jmxPort}",
+                            "-Djava.rmi.server.hostname=${host}",
+                            "-Dcom.sun.management.jmxremote.authenticate=false",
+                            "-Dcom.sun.management.jmxremote.ssl=false",
+                            "-Dspring.jmx.enabled=true",
+                            "-Dspring.application.admin.enabled=true",
+                            "-Dmanagement.endpoints.jmx.exposure.include=*",
+                            "-Dmanagement.endpoint.env.show-values=ALWAYS"
+                        ]
+                    },
+                    "description": "The attach settings under every project's own: host, JMX port of the live data and JDWP port of the debugger (an empty port skips that half), and the JVM options Copy app startup options gives for each half, with ${host}, ${jmxPort} and ${debugPort} filled in",
+                    "properties": {
+                        "host": {
+                            "type": "string"
+                        },
+                        "jmxPort": {
+                            "type": "string"
+                        },
+                        "debugPort": {
+                            "type": "string"
+                        },
+                        "debugVmArgs": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "jmxVmArgs": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "spring.dashboard.attach.settings": {
+                    "type": "object",
+                    "default": {},
+                    "description": "Attach settings per project name, on top of spring.dashboard.attach.defaults: a key that is set replaces the default. The host and ports are used until an attach to the project remembers others, the JVM options always come from the settings (here or spring.dashboard.attach.defaults). { \"orders-service\": { \"host\": \"10.0.0.5\", \"debugPort\": \"\" } }",
+                    "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                            "host": {
                                 "type": "string"
                             },
-                            "args": {
+                            "jmxPort": {
                                 "type": "string"
                             },
-                            "env": {
+                            "debugPort": {
                                 "type": "string"
+                            },
+                            "debugVmArgs": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "jmxVmArgs": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
                             }
                         }
                     }
@@ -222,8 +367,8 @@
                 "category": "Spring Boot Dashboard"
             },
             {
-                "command": "spring-boot-dashboard.app.local.list",
-                "title": "Open the list of local apps (SPRING APPS)",
+                "command": "spring-boot-dashboard.list",
+                "title": "List the Spring Boot apps of the workspace",
                 "category": "Spring Boot Dashboard"
             },
             {

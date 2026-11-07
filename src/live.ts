@@ -109,7 +109,8 @@ export class LiveData implements coc.Disposable {
             beans: (Array.isArray(beans) ? beans : []).map((b: any) => typeof b === "string" ? b : (b?.id ?? b?.name ?? String(b))).sort(),
             mappings: Array.isArray(mappings) ? mappings : [],
             port: port ? parseInt(String(port), 10) : undefined,
-            contextPath: contextPath ? String(contextPath) : undefined,
+            // Spring Boot 3 masks the values of the env endpoint ("******") unless show-values allows them
+            contextPath: String(contextPath ?? "").startsWith("/") ? String(contextPath) : undefined,
         };
         this.apps.set(process.processKey, app);
         this.emitter.fire(app);
