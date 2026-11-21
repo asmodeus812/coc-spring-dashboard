@@ -1,0 +1,41 @@
+# Sources, tests and build inputs: the bundle in lib/ is what runs
+/src/
+/tests/
+/test/
+/scripts/
+/typings/
+/tsconfig*.json
+/tslint.json
+/esbuild.*
+/webpack.config.*
+*.map
+
+# Repository, editor and local tooling files
+/.github/
+/.cache/
+/.vscode/
+/.editorconfig
+/.prettierrc
+/.eslintrc*
+/.gitattributes
+/.watchmanconfig
+/.ignore
+/.tags
+/Makefile
+/docker-compose.yml
+/sonar-project.properties
+/sonar-scan.sh
+/publish.sh
+/release.sh
+/doc/tags
+.DS_Store
+
+# Package manager, logs and local work
+node_modules/
+yarn.lock
+yarn-error.log
+*.log
+*.vsix
+/coverage/
+/scratch/
+/docs/

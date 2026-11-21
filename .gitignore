@@ -1,2 +1,26 @@
+# Dependencies and build output
 node_modules/
 lib/
+!/language-server/lib/
+*.map
+*.vsix
+
+# Local caches, logs and generated files
+.cache/
+coverage/
+scratch/
+doc/tags
+*.log
+.DS_Store
+
+# Java build output of test projects
+target/
+bin/
+out/
+build/
+dist/
+.gradle/
+.settings/
+.classpath
+.project
+.checkstyle
